@@ -1,4 +1,4 @@
-﻿namespace LearningManagementSystem.Domain.Tests;
+﻿namespace LearningManagementSystem.Architecture.Tests;
 
 public class UnitTest1
 {
