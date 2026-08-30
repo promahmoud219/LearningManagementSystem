@@ -1,6 +1,4 @@
-using System;
-
-namespace LearningManagementSystem.SharedKernel.Ids;
+namespace LearningManagementSystem.SharedKernel.ValueObjects;
 
 public readonly record struct CourseOfferingId(Guid Value)
 {

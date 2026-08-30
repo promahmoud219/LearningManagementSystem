@@ -1,0 +1,967 @@
+=== ./src/Api/Program.cs ===
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddOpenApi();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.UseHttpsRedirection();
+
+var summaries = new[]
+{
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
+
+app.MapGet("/weatherforecast", () =>
+{
+    var forecast =  Enumerable.Range(1, 5).Select(index =>
+        new WeatherForecast
+        (
+            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            Random.Shared.Next(-20, 55),
+            summaries[Random.Shared.Next(summaries.Length)]
+        ))
+        .ToArray();
+    return forecast;
+})
+.WithName("GetWeatherForecast");
+
+app.Run();
+
+record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+=== ./src/AppHost/Program.cs ===
+var builder = DistributedApplication.CreateBuilder(args);
+
+builder.Build().Run();
+
+=== ./src/Modules/CourseOffering/Application/Contracts/CourseOfferingEnrollmentEligibilityResult.cs ===
+namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+
+public enum CourseOfferingEligibilityResult
+{
+    Eligible,  
+    Closed,    
+    Full       
+}
+=== ./src/Modules/CourseOffering/Application/Contracts/ICourseOfferingEnrollmentEligibilityChecker.cs ===
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+
+public interface ICourseOfferingEnrollmentEligibilityChecker
+{
+    Task<CourseOfferingEligibilityResult> CheckEligibilityAsync(
+        CourseOfferingId courseOfferingId,
+        CancellationToken cancellationToken);
+}
+=== ./src/Modules/CourseOffering/Application/Contracts/ICourseOfferingPricing.cs ===
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+
+public interface ICourseOfferingPricing
+{
+    Task<Money> GetCurrentPriceAsync(
+        CourseOfferingId courseOfferingId, 
+        CancellationToken cancellationToken);
+}
+
+=== ./src/Modules/CourseOffering/Application/DependencyInjection.cs ===
+
+=== ./src/Modules/CourseOffering/Application/Services/CourseOfferingEnrollmentEligibility.cs ===
+
+=== ./src/Modules/CourseOffering/Application/Services/CourseOfferingEnrollmentEligibilityChecker.cs ===
+
+
+=== ./src/Modules/CourseOffering/Application/Services/CourseOfferingPricingService.cs ===
+using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+using LearningManagementSystem.Modules.CourseOffering.Domain.Repositories; // أو الـ DbContext/ReadModel
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.CourseOffering.Application.Services;
+
+internal sealed class CourseOfferingPricingService : ICourseOfferingPricing
+{
+    private readonly ICourseOfferingRepository _repository;
+
+    public CourseOfferingPricingService(ICourseOfferingRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<Money> GetCurrentPriceAsync(
+        CourseOfferingId courseOfferingId, 
+        CancellationToken cancellationToken)
+    {
+        var courseOffering = await _repository.GetByIdAsync(courseOfferingId, cancellationToken);
+
+        if (courseOffering is null)
+        {
+            throw new InvalidOperationException($"Course offering with ID '{courseOfferingId.Value}' was not found.");
+        }
+
+        // إرجاع السعر من الـ Aggregate مباشرة
+        return courseOffering.Price; 
+    }
+}
+
+=== ./src/Modules/CourseOffering/Domain/Aggregates/CourseOffering.cs ===
+
+=== ./src/Modules/CourseOffering/Domain/ValueObjects/EnrollmentWindow.cs ===
+namespace LearningManagementSystem.Modules.CourseOffering.Domain.ValueObjects;
+
+public sealed record EnrollmentWindow
+{
+    public DateTime StartDate { get; }
+    public DateTime EndDate { get; }
+
+    public EnrollmentWindow(DateTime startDate, DateTime endDate)
+    {
+        if (startDate >= endDate)
+            throw new ArgumentException("Start date must be before end date.");
+
+        StartDate = startDate;
+        EndDate = endDate;
+    }
+
+    
+    public bool IsOpen(DateTime currentDate) =>
+        currentDate >= StartDate && currentDate <= EndDate;
+}
+=== ./src/Modules/CourseOffering/Infrastructure/DependencyInjection.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/ApproveEnrollment/ApproveEnrollmentCommand.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/ApproveEnrollment/ApproveEnrollmentCommandHandler.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/ApproveEnrollment/ApproveEnrollmentCommandValidator.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommand.cs ===
+using MediatR;
+
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+using LearningManagementSystem.SharedKernel.Results;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
+
+public sealed record RequestEnrollmentCommand(
+    StudentId StudentId,
+    CourseOfferingId CourseOfferingId,
+    string? DiscountCode) : IRequest<OperationResult<EnrollmentId>>;
+=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandHandler.cs ===
+using MediatR;
+
+using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.Modules.Enrollment.Application.Services;
+
+using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
+using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+using LearningManagementSystem.Modules.Enrollment.Domain.Repositories;
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+
+using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+
+using LearningManagementSystem.SharedKernel.Results;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;                                                                 
+
+internal sealed class RequestEnrollmentCommandHandler
+    : IRequestHandler<RequestEnrollmentCommand, OperationResult<EnrollmentId>>
+{
+    private readonly EnrollmentEligibilityService _enrollmentEligibilityService;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly ICourseOfferingPricing _pricing;
+
+
+    public RequestEnrollmentCommandHandler(
+        EnrollmentEligibilityService eligibilityService,
+        ICourseOfferingPricing pricing,
+        IEnrollmentRepository enrollmentRepository)
+    {
+        _enrollmentEligibilityService = eligibilityService;
+        _enrollmentRepository = enrollmentRepository;
+        _pricing = pricing;
+    }
+
+    public async Task<OperationResult<EnrollmentId>> Handle(
+        RequestEnrollmentCommand request,
+        CancellationToken cancellationToken)
+    {
+        var eligibility = await _enrollmentEligibilityService.CheckEligibilityAsync(
+            request.StudentId, request.CourseOfferingId, cancellationToken);
+
+        if (eligibility != EligibilityResult.Eligible)
+        {
+            return OperationResult<EnrollmentId>.ValidationError(
+                new Error(eligibility.ToString(), "Student is not eligible to enroll in this course offering."));
+        }
+
+        var basePrice = await _pricing.GetCurrentPriceAsync(request.CourseOfferingId, cancellationToken);
+
+        var discount = Money.Zero(basePrice.Currency); //  discount code, resolution 
+
+        var enrollment = Enrollment.Create(
+            EnrollmentId.Create(),
+            request.StudentId,
+            request.CourseOfferingId,
+            DateTime.UtcNow,
+            basePrice,
+            discount,
+            request.DiscountCode);
+
+        await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
+
+        // TODO : SaveChanges + publish enrollment.DomainEvents with MediatR
+
+        return OperationResult<EnrollmentId>.Success(enrollment.Id);
+    }
+}
+=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandValidator.cs ===
+using FluentValidation;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
+
+public sealed class RequestEnrollmentCommandValidator : AbstractValidator<RequestEnrollmentCommand>
+{
+    public RequestEnrollmentCommandValidator()
+    {
+        RuleFor(x => x.StudentId)
+            .NotEqual(StudentId.Empty)
+            .WithMessage("Student id is required.");
+
+        RuleFor(x => x.CourseOfferingId)
+            .NotEqual(CourseOfferingId.Empty)
+            .WithMessage("Course offering id is required.");
+
+        RuleFor(x => x.DiscountCode)
+            .MaximumLength(50)
+            .When(x => x.DiscountCode is not null)
+            .WithMessage("Discount code is too long.");
+    }
+}
+=== ./src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommand.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommandHandler.cs ===
+
+=== ./src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommandValidator.cs ===
+
+=== ./src/Modules/Enrollment/Application/Contracts/IEnrollmentUniquenessChecker.cs ===
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+
+public interface IEnrollmentUniquenessChecker
+{
+    Task<bool> IsEnrollmentUniqueAsync(
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        CancellationToken cancellationToken);
+
+}
+=== ./src/Modules/Enrollment/Application/DependencyInjection.cs ===
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application; // ???? Enrollment ??? ????????
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddEnrollmentApplication(this IServiceCollection services)
+    {
+        // 1. ????? MediatR ????? ???? ??? ??????? ???
+        services.AddMediatR(config =>
+        {
+            config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+        });
+
+        // 2. ????? FluentValidation (?? ????????)
+        // services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // 3. ????? ??? Services ?????? ?????????
+        // services.AddScoped<IEnrollmentEligibilityService, EnrollmentEligibilityService>();
+
+        return services;
+    }
+}
+=== ./src/Modules/Enrollment/Application/Queries/GetEnrollment/GetEnrollmentQuery.cs ===
+
+=== ./src/Modules/Enrollment/Application/Queries/GetEnrollment/GetEnrollmentQueryHandler.cs ===
+
+=== ./src/Modules/Enrollment/Application/Queries/GetStudentEnrollments/GetStudentEnrollmentsQuery.cs ===
+
+=== ./src/Modules/Enrollment/Application/Queries/GetStudentEnrollments/GetStudentEnrollmentsQueryHandler.cs ===
+
+=== ./src/Modules/Enrollment/Application/Services/EnrollmentEligibilityService.cs ===
+using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+using LearningManagementSystem.SharedKernel.ValueObjects; 
+
+using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+using LearningManagementSystem.Modules.Student.Application.Contracts;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Services;
+
+internal sealed class EnrollmentEligibilityService
+{
+    private readonly IStudentEnrollmentEligibilityChecker _studentEligibility;
+    private readonly ICourseOfferingEnrollmentEligibilityChecker _courseOfferingEligibility;
+    private readonly IEnrollmentUniquenessChecker _uniquenessChecker;
+
+    public EnrollmentEligibilityService(
+        IStudentEnrollmentEligibilityChecker studentEligibility,
+        ICourseOfferingEnrollmentEligibilityChecker  courseOfferingEligibility,
+        IEnrollmentUniquenessChecker uniquenessChecker)
+    {
+        _studentEligibility = studentEligibility;
+        _courseOfferingEligibility = courseOfferingEligibility;
+        _uniquenessChecker = uniquenessChecker;
+    }
+
+    public async Task<EligibilityResult> CheckEligibilityAsync(
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        CancellationToken cancellationToken)
+    {
+        var studentResult = await _studentEligibility.IsEligibleAsync(
+            studentId, courseOfferingId, cancellationToken);
+
+        if (studentResult == StudentEnrollmentEligibilityResult.PrerequisitesNotMet)
+            return EligibilityResult.PrerequisitesNotMet;
+
+        var courseResult = await _courseOfferingEligibility.CheckEligibilityAsync(
+            courseOfferingId, cancellationToken);
+
+        if (courseResult == CourseOfferingEligibilityResult.Closed)
+            return EligibilityResult.OutsideEnrollmentWindow;
+
+        if (courseResult == CourseOfferingEligibilityResult.Full)
+            return EligibilityResult.CapacityExceeded;
+
+        var alreadyEnrolled = await _uniquenessChecker.IsEnrollmentUniqueAsync(
+            studentId, courseOfferingId, cancellationToken);
+
+        if (alreadyEnrolled)
+            return EligibilityResult.DuplicateEnrollment;
+
+        return EligibilityResult.Eligible;
+    }
+}
+=== ./src/Modules/Enrollment/Application/Services/WithdrawalPolicyService.cs ===
+
+=== ./src/Modules/Enrollment/Domain/Aggregates/Enrollment.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.Modules.Enrollment.Domain.Events;
+using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+
+using LearningManagementSystem.SharedKernel.Abstractions;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
+
+public sealed class Enrollment : AggregateRoot
+{
+    public EnrollmentId Id { get; private set; }
+    public StudentId StudentId { get; private set; }
+    public CourseOfferingId CourseOfferingId { get; private set; }
+    public EnrollmentStatus Status { get; private set; }
+    public DateTime EnrollmentDate { get; private set; }
+    public Money BasePrice { get; private set; }
+    public Money Discount { get; private set; }
+    public Money FinalAmount { get; private set; }
+    public string? DiscountCode { get; private set; }
+
+    private Enrollment(
+        EnrollmentId id,
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        DateTime enrollmentDate,
+        Money basePrice,
+        Money discount,
+        string? discountCode)
+    {
+        Id = id;
+        StudentId = studentId;
+        CourseOfferingId = courseOfferingId;
+        EnrollmentDate = enrollmentDate;
+
+        BasePrice = basePrice;
+        Discount = discount;
+        FinalAmount = basePrice - discount;
+        DiscountCode = discountCode;
+
+        Status = EnrollmentStatus.Requested;
+    }
+
+    public static Enrollment Create(
+        EnrollmentId id,
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        DateTime enrollmentDate,
+        Money basePrice,
+        Money discount,
+        string? discountCode)
+    {
+        var enrollment = new Enrollment(
+            id, studentId, courseOfferingId, enrollmentDate, basePrice, discount, discountCode);
+
+        enrollment.RaiseDomainEvent(
+            new EnrollmentRequested(
+                id, studentId, courseOfferingId, basePrice, discount, enrollment.FinalAmount, discountCode));
+
+        return enrollment;
+    }
+
+    public void Approve()
+    {
+        if (Status != EnrollmentStatus.Requested)
+            throw new InvalidOperationException("Only requested enrollments can be approved.");
+
+        Status = EnrollmentStatus.Approved;
+        RaiseDomainEvent(new EnrollmentApproved(Id));
+    }
+
+    public void Reject()
+    {
+        if (Status != EnrollmentStatus.Requested)
+            throw new InvalidOperationException("Only requested enrollments can be rejected.");
+
+        Status = EnrollmentStatus.Rejected;
+        RaiseDomainEvent(new EnrollmentRejected(Id));
+    }
+
+    public void Withdraw()
+    {
+        if (Status != EnrollmentStatus.Approved)
+            throw new InvalidOperationException("Only approved enrollments can be withdrawn.");
+
+        Status = EnrollmentStatus.Withdrawn;
+        RaiseDomainEvent(new EnrollmentWithdrawn(Id));
+    }
+}
+=== ./src/Modules/Enrollment/Domain/Enums/EligibilityResult.cs ===
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+
+public enum EligibilityResult
+{
+    Eligible = 0,
+    PrerequisitesNotMet = 1,
+    DuplicateEnrollment = 2,
+    CapacityExceeded = 3,
+    OutsideEnrollmentWindow = 4
+}
+=== ./src/Modules/Enrollment/Domain/Enums/EnrollmentStatus.cs ===
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+
+public enum EnrollmentStatus
+{
+    Requested,
+    Approved,
+    Rejected,
+    Withdrawn
+}   
+=== ./src/Modules/Enrollment/Domain/Events/EnrollmentApproved.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.SharedKernel.Abstractions;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
+
+public sealed record EnrollmentApproved(
+    EnrollmentId EnrollmentId) : DomainEvent;
+=== ./src/Modules/Enrollment/Domain/Events/EnrollmentRejected.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.SharedKernel.Abstractions;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
+
+public sealed record EnrollmentRejected(
+    EnrollmentId EnrollmentId) : DomainEvent;
+=== ./src/Modules/Enrollment/Domain/Events/EnrollmentRequested.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.SharedKernel.Abstractions;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
+
+public sealed record EnrollmentRequested(
+    EnrollmentId EnrollmentId,
+    StudentId StudentId,
+    CourseOfferingId CourseOfferingId,
+    Money BasePrice,
+    Money Discount,
+    Money FinalAmount,
+    string? DiscountCode = null) : DomainEvent;
+
+=== ./src/Modules/Enrollment/Domain/Events/EnrollmentWithdrawn.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.SharedKernel.Abstractions;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
+
+public sealed record EnrollmentWithdrawn(
+    EnrollmentId EnrollmentId) : DomainEvent;
+=== ./src/Modules/Enrollment/Domain/Repositories/IEnrollmentRepository.cs ===
+using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Repositories;
+
+public interface IEnrollmentRepository
+{
+    Task<Enrollment?> GetByIdAsync(EnrollmentId id, CancellationToken cancellationToken);
+
+    Task AddAsync(Enrollment enrollment, CancellationToken cancellationToken);
+}
+=== ./src/Modules/Enrollment/Domain/ValueObjects/EnrollmentId.cs ===
+namespace LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+
+public sealed record EnrollmentId(Guid Value)
+{
+    public static EnrollmentId Create() => new(Guid.NewGuid());
+}
+=== ./src/Modules/Enrollment/Infrastructure/DependencyInjection.cs ===
+using Microsoft.Extensions.DependencyInjection;
+
+namespace LearningManagementSystem.Modules.Enrollment.Infrastructure; // ???? Enrollment ??? ????????
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddEnrollmentInfrastructure(this IServiceCollection services/*, IConfiguration configuration*/)
+    {
+        // 1. ????? ??? DbContext (????? ????????)
+        // services.AddDbContext<EnrollmentDbContext>(options => ...);
+
+        // 2. ????? ??? Repositories
+        // services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+
+        // 3. ????? ??? Checkers/External services
+        // services.AddScoped<IEnrollmentUniquenessChecker, EnrollmentUniquenessChecker>();
+
+        return services;
+    }
+}
+=== ./src/Modules/Enrollment/Infrastructure/EnrollmentUniquenessChecker.cs ===
+using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
+
+internal sealed class EnrollmentUniquenessChecker : IEnrollmentUniquenessChecker
+{
+    public Task<bool> IsEnrollmentUniqueAsync(
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+}
+=== ./src/Modules/Payment/Application/DependencyInjection.cs ===
+
+=== ./src/Modules/Payment/Infrastructure/DependencyInjection.cs ===
+
+=== ./src/Modules/Student/Application/Contracts/IStudentEnrollmentEligibilityChecker.cs ===
+using LearningManagementSystem.SharedKernel.ValueObjects;
+
+namespace LearningManagementSystem.Modules.Student.Application.Contracts;
+
+public interface IStudentEnrollmentEligibilityChecker
+{
+    Task<StudentEnrollmentEligibilityResult> IsEligibleAsync(
+        StudentId studentId,
+        CourseOfferingId courseOfferingId,
+        CancellationToken cancellationToken);
+}
+=== ./src/Modules/Student/Application/Contracts/StudentEnrollmentEligibilityResult.cs ===
+namespace LearningManagementSystem.Modules.Student.Application.Contracts;
+
+public enum StudentEnrollmentEligibilityResult
+{
+    Eligible,
+    PrerequisitesNotMet
+}
+=== ./src/Modules/Student/Application/DependencyInjection.cs ===
+
+=== ./src/Modules/Student/Application/Services/StudentEnrollmentEligibilityChecker.cs ===
+
+=== ./src/Modules/Student/Domain/Aggregates/Student.cs ===
+
+=== ./src/Modules/Student/Infrastructure/DependencyInjection.cs ===
+
+=== ./src/ServiceDefaults/Extensions.cs ===
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.ServiceDiscovery;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+
+namespace Microsoft.Extensions.Hosting;
+
+// Adds common .NET Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
+// This project should be referenced by each service project in your solution.
+// To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
+public static class Extensions
+{
+    public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
+    {
+        builder.ConfigureOpenTelemetry();
+
+        builder.AddDefaultHealthChecks();
+
+        builder.Services.AddServiceDiscovery();
+
+        builder.Services.ConfigureHttpClientDefaults(http =>
+        {
+            // Turn on resilience by default
+            http.AddStandardResilienceHandler();
+
+            // Turn on service discovery by default
+            http.AddServiceDiscovery();
+        });
+
+        // Uncomment the following to restrict the allowed schemes for service discovery.
+        // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
+        // {
+        //     options.AllowedSchemes = ["https"];
+        // });
+
+        return builder;
+    }
+
+    public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
+    {
+        builder.Logging.AddOpenTelemetry(logging =>
+        {
+            logging.IncludeFormattedMessage = true;
+            logging.IncludeScopes = true;
+        });
+
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics =>
+            {
+                metrics.AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation();
+            })
+            .WithTracing(tracing =>
+            {
+                tracing.AddAspNetCoreInstrumentation()
+                    // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
+                    //.AddGrpcClientInstrumentation()
+                    .AddHttpClientInstrumentation();
+            });
+
+        builder.AddOpenTelemetryExporters();
+
+        return builder;
+    }
+
+    private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
+    {
+        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+
+        if (useOtlpExporter)
+        {
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
+
+        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
+        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+        //{
+        //    builder.Services.AddOpenTelemetry()
+        //       .UseAzureMonitor();
+        //}
+
+        return builder;
+    }
+
+    public static IHostApplicationBuilder AddDefaultHealthChecks(this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddHealthChecks()
+            // Add a default liveness check to ensure app is responsive
+            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+
+        return builder;
+    }
+
+    public static WebApplication MapDefaultEndpoints(this WebApplication app)
+    {
+        // Adding health checks endpoints to applications in non-development environments has security implications.
+        // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
+        if (app.Environment.IsDevelopment())
+        {
+            // All health checks must pass for app to be considered ready to accept traffic after starting
+            app.MapHealthChecks("/health");
+
+            // Only health checks tagged with the "live" tag must pass for app to be considered alive
+            app.MapHealthChecks("/alive", new HealthCheckOptions
+            {
+                Predicate = r => r.Tags.Contains("live")
+            });
+        }
+
+        return app;
+    }
+}
+
+=== ./src/SharedKernel/Abstractions/AggregateRoot.cs ===
+using System;
+using System.Collections.Generic;
+
+namespace LearningManagementSystem.SharedKernel.Abstractions;
+
+public abstract class AggregateRoot
+{
+    private readonly List<DomainEvent> _domainEvents = new();
+
+    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    protected void RaiseDomainEvent(DomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+}
+
+=== ./src/SharedKernel/Abstractions/DomainEvent.cs ===
+namespace LearningManagementSystem.SharedKernel.Abstractions;
+
+public abstract record DomainEvent(Guid EventId, DateTime OccurredOnUtc) : IDomainEvent
+{
+    protected DomainEvent() : this(Guid.NewGuid(), DateTime.UtcNow) 
+    { 
+    }
+}
+
+
+=== ./src/SharedKernel/Abstractions/IDomainEvent.cs ===
+using MediatR;
+namespace LearningManagementSystem.SharedKernel.Abstractions;
+
+public interface IDomainEvent : INotification 
+{
+    Guid EventId { get; }
+    DateTime OccurredOnUtc { get; }
+}
+
+=== ./src/SharedKernel/Results/Error.cs ===
+namespace LearningManagementSystem.SharedKernel.Results;
+
+public sealed record Error(string Code, string Message)
+{
+    public static readonly Error None = new(string.Empty, string.Empty);
+}
+
+=== ./src/SharedKernel/Results/OperationResult.cs ===
+namespace LearningManagementSystem.SharedKernel.Results;
+
+public sealed record OperationResult<T>(
+    OperationStatus Status,
+    T? Output = default,
+    Error? Error = null
+)
+{
+    public static OperationResult<T> Success(T output) =>
+        new(OperationStatus.Success, output, null);
+
+    public static OperationResult<T> Failure(Error error) =>
+        new(OperationStatus.Failure, default, error);
+
+    public static OperationResult<T> ValidationError(Error error) =>
+        new(OperationStatus.ValidationError, default, error);
+
+    public static OperationResult<T> NotFound(Error error) =>
+        new(OperationStatus.NotFound, default, error);
+
+    public static OperationResult<T> NeedsConfirmation(Error error) =>
+        new(OperationStatus.NeedsConfirmation, default, error);
+    
+    public static OperationResult<T> BusinessRuleError(Error error) =>
+        new(OperationStatus.BusinessRuleError, default, error);
+}
+
+public sealed record OperationResult(
+    OperationStatus Status,
+    Error? Error = null
+)
+{
+    public static OperationResult Success() =>
+        new(OperationStatus.Success, null);
+
+    public static OperationResult Failure(Error error) =>
+        new(OperationStatus.Failure, error);
+
+    public static OperationResult ValidationError(Error error) =>
+        new(OperationStatus.ValidationError, error);
+
+    public static OperationResult NotFound(Error error) =>
+        new(OperationStatus.NotFound, error);
+
+    public static OperationResult NeedsConfirmation(Error error) =>
+        new(OperationStatus.NeedsConfirmation, error);
+
+    public static OperationResult BusinessRuleError(Error error) =>
+        new(OperationStatus.BusinessRuleError, error);
+}
+=== ./src/SharedKernel/Results/OperationStatus.cs ===
+namespace LearningManagementSystem.SharedKernel.Results;
+
+public enum OperationStatus
+{
+    Success,
+    Failure,
+    NotFound,
+    ValidationError,
+    NeedsConfirmation,
+    BusinessRuleError
+}
+=== ./src/SharedKernel/ValidationBehavior.cs ===
+using FluentValidation;
+using MediatR;
+
+namespace LearningManagementSystem.SharedKernel.Behaviors;
+
+public sealed class ValidationBehavior<TRequest, TResponse> 
+    : IPipelineBehavior<TRequest, TResponse> where TRequest : notnull
+{
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
+
+    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
+    {
+        _validators = validators;
+    }
+
+    public async Task<TResponse> Handle(
+        TRequest request, 
+        RequestHandlerDelegate<TResponse> next, 
+        CancellationToken cancellationToken)
+    {
+        if (!_validators.Any())
+        {
+            return await next();
+        }
+
+        var context = new ValidationContext<TRequest>(request);
+
+        var validationResults = await Task.WhenAll(
+            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
+
+        var failures = validationResults
+            .Where(r => r.Errors.Any())
+            .SelectMany(r => r.Errors)
+            .ToList();
+
+        if (failures.Any())
+        {
+            throw new ValidationException(failures);
+        }
+
+        return await next();
+    }
+}
+
+=== ./src/SharedKernel/ValueObjects/CourseOfferingId.cs ===
+namespace LearningManagementSystem.SharedKernel.ValueObjects;
+
+public readonly record struct CourseOfferingId(Guid Value)
+{
+    public static CourseOfferingId New() => new(Guid.NewGuid());
+    public static CourseOfferingId Empty => new(Guid.Empty);
+}
+
+=== ./src/SharedKernel/ValueObjects/Money.cs ===
+namespace LearningManagementSystem.SharedKernel.ValueObjects;
+
+public sealed record Money
+{
+    public decimal Amount { get; init; }
+    public string Currency { get; init; }
+
+    public Money(decimal amount, string currency = "EGP")
+    {
+        if (amount < 0)
+            throw new ArgumentException("Amount cannot be negative", nameof(amount));
+
+        if (string.IsNullOrWhiteSpace(currency))
+            throw new ArgumentException("Currency cannot be empty", nameof(currency));
+
+        Amount = amount;
+        Currency = currency.ToUpper();
+    }
+
+    public static Money Zero(string currency = "EGP") => new(0, currency);
+
+    public static Money operator -(Money left, Money right)
+    {
+        if (left.Currency != right.Currency)
+            throw new InvalidOperationException("Cannot subtract money with different currencies.");
+
+        if (left.Amount < right.Amount)
+            throw new InvalidOperationException("Cannot have a negative money amount after subtraction.");
+
+        return new Money(left.Amount - right.Amount, left.Currency);
+    }
+
+    public static Money operator +(Money left, Money right)
+    {
+        if (left.Currency != right.Currency)
+            throw new InvalidOperationException("Cannot add money with different currencies.");
+
+        return new Money(left.Amount + right.Amount, left.Currency);
+    }
+
+    public Money ApplyPercentage(decimal percentage)
+    {
+        if (percentage < 0 || percentage > 100)
+            throw new ArgumentException("Percentage must be between 0 and 100.");
+
+        return new Money(this.Amount * (percentage / 100), this.Currency);
+    }
+}
+=== ./src/SharedKernel/ValueObjects/StudentId.cs ===
+namespace LearningManagementSystem.SharedKernel.ValueObjects;
+
+public readonly record struct StudentId(Guid Value)
+{
+    public static StudentId New() => new(Guid.NewGuid());
+    public static StudentId Empty => new(Guid.Empty);
+}
+
+=== ./tests/Architecture.Tests/SharedKernelTests.cs ===
+
+=== ./tests/Architecture.Tests/UnitTest1.cs ===
+﻿namespace LearningManagementSystem.Architecture.Tests;
+
+public class UnitTest1
+{
+    [Fact]
+    public void Test1()
+    {
+
+    }
+}
+
+=== ./tests/Modules/Enrollment/Domain.Tests/EnrollmentTests.cs ===
+

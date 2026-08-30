@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Domain\LearningManagementSystem.Modules.Enrollment.Domain.csproj" />
     <ProjectReference Include="..\..\Student\Application\LearningManagementSystem.Modules.Student.Application.csproj" />
+    <ProjectReference Include="..\..\CourseOffering\Application\LearningManagementSystem.Modules.CourseOffering.Application.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

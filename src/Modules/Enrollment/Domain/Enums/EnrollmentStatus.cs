@@ -1,4 +1,4 @@
-namespace LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
 
 public enum EnrollmentStatus
 {

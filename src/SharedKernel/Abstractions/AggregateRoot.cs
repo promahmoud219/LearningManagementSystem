@@ -5,11 +5,11 @@ namespace LearningManagementSystem.SharedKernel.Abstractions;
 
 public abstract class AggregateRoot
 {
-    private readonly List<object> _domainEvents = new();
+    private readonly List<DomainEvent> _domainEvents = new();
 
-    public IReadOnlyCollection<object> DomainEvents => _domainEvents.AsReadOnly();
-
-    protected void RaiseDomainEvent(object domainEvent)
+    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    
+    protected void RaiseDomainEvent(DomainEvent domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }
@@ -19,3 +19,11 @@ public abstract class AggregateRoot
         _domainEvents.Clear();
     }
 }
+
+
+
+ 
+
+        
+
+
