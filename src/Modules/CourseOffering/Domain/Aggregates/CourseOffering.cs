@@ -1,31 +1,64 @@
+using LearningManagementSystem.SharedKernel.Abstractions;
 using LearningManagementSystem.SharedKernel.ValueObjects;
 
 namespace LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
 
-public sealed class CourseOffering(
-    CourseOfferingId id, 
-    CourseId courseId, 
-    Money price,
-    EnrollmentWindow enrollmentWindow, 
-    int capacity
-    ) : AggregateRoot
+public sealed class CourseOffering : AggregateRoot
 {
-    public CourseOfferingId Id { get; private set; }= id;
-    public CourseId CourseId { get; private set; }= courseId;
-    public Money Price { get; private set; } = price;
-    public EnrollmentWindow EnrollmentWindow { get; private set; }= enrollmentWindow;
-    public int Capacity { get; private set; }= capacity;
-    public int CurrentEnrollmentCount { get; private set; }= 0;
-    public bool IsClosedManually { get; private set; } = false;
+    private CourseOffering(
+        CourseOfferingId id,
+        CourseId courseId,
+        TermId termId,
+        short studyYear,
+        Department department,
+        Money price,
+        int capacity,
+        int currentEnrollmentCount)
+    {
+        if (capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+
+        Id = id;
+        CourseId = courseId;
+        TermId = termId;
+        StudyYear = studyYear;
+        Department = department;
+        Price = price;
+        Capacity = capacity;
+        CurrentEnrollmentCount = currentEnrollmentCount;
+    }
+
+    public CourseOfferingId Id { get; private set; }
+    public CourseId CourseId { get; private set; }
+    public TermId TermId { get; private set; }
+    public short StudyYear { get; private set; }
+    public Department Department { get; private set; }
+    public Money Price { get; private set; }
+    public int Capacity { get; private set; }
+    public int CurrentEnrollmentCount { get; private set; }
 
 
     public static CourseOffering Create(
         CourseOfferingId id,
-        Guid courseId,
+        CourseId courseId,
+        TermId termId,
+        short studyYear,
         Money price,
-        EnrollmentWindow enrollmentWindow,
-        int maxCapacity) 
-        => new (id, courseId, price, enrollmentWindow, maxCapacity);
+        Department department,
+        int capacity)
+        => new(id, courseId, termId, studyYear, department, price, capacity, 0);
+
+    public static CourseOffering Rehydrate(
+        CourseOfferingId id,
+        CourseId courseId,
+        TermId termId,
+        short studyYear,
+        Department department,
+        Money price,
+        int capacity,
+        int currentEnrollmentCount)
+        => new(id, courseId, termId, studyYear, department, price, capacity,
+            currentEnrollmentCount);
 
 
     public bool IsFull() => CurrentEnrollmentCount >= Capacity;
@@ -38,9 +71,6 @@ public sealed class CourseOffering(
         CurrentEnrollmentCount++;
     }  
     
-    public bool IsEnrollmentClosed(DateTime currentDate) 
-        => IsClosedManually || !EnrollmentWindow.IsOpen(currentDate);
-
     public void EnrollStudent()
     {
         if (IsFull())

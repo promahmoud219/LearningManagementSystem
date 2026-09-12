@@ -1,9 +1,8 @@
 namespace LearningManagementSystem.SharedKernel.Abstractions;
 
-public abstract record DomainEvent(Guid EventId, DateTime OccurredOnUtc) : IDomainEvent
+public abstract record DomainEvent(int EventId, DateTime OccurredOnUtc) : IDomainEvent
 {
-    protected DomainEvent() : this(Guid.NewGuid(), DateTime.UtcNow) 
+    protected DomainEvent() : this(Random.Shared.Next(1, int.MaxValue), DateTime.UtcNow)
     { 
     }
 }
-

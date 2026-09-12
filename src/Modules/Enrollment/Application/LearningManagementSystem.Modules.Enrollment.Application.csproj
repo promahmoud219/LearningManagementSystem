@@ -2,12 +2,19 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\LearningManagementSystem.Modules.Enrollment.Domain.csproj" />
-    <ProjectReference Include="..\..\Student\Application\LearningManagementSystem.Modules.Student.Application.csproj" />
-    <ProjectReference Include="..\..\CourseOffering\Application\LearningManagementSystem.Modules.CourseOffering.Application.csproj" />
+    <ProjectReference Include="..\..\Student\Contracts\LearningManagementSystem.Modules.Student.Contracts.csproj" />
+	<ProjectReference Include="..\..\CourseOffering\Contracts\LearningManagementSystem.Modules.CourseOffering.Contracts.csproj" />
+	<ProjectReference Include="..\..\..\SharedKernel\LearningManagementSystem.SharedKernel.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+    <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

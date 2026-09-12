@@ -1,6 +1,6 @@
 namespace LearningManagementSystem.SharedKernel.Results;
 
-public enum OperationStatus
+public enum OperationStatus : byte
 {
     Success,
     Failure,

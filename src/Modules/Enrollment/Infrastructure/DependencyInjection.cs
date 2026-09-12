@@ -1,19 +1,22 @@
+using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace LearningManagementSystem.Modules.Enrollment.Infrastructure; // ???? Enrollment ??? ????????
+namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddEnrollmentInfrastructure(this IServiceCollection services/*, IConfiguration configuration*/)
+    public static IServiceCollection AddEnrollmentInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        // 1. ????? ??? DbContext (????? ????????)
-        // services.AddDbContext<EnrollmentDbContext>(options => ...);
+        var connectionString = configuration.GetConnectionString("LmsDatabase")
+            ?? throw new InvalidOperationException("Connection string 'LmsDatabase' is not configured.");
 
-        // 2. ????? ??? Repositories
-        // services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
-
-        // 3. ????? ??? Checkers/External services
-        // services.AddScoped<IEnrollmentUniquenessChecker, EnrollmentUniquenessChecker>();
+        services.AddScoped<IEnrollmentRepository>(_ => new SqlEnrollmentRepository(connectionString));
+        services.AddScoped<IEnrollmentUniquenessChecker>(
+            _ => new EnrollmentUniquenessChecker(connectionString));
 
         return services;
     }

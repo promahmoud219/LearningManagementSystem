@@ -12,38 +12,48 @@ public sealed class Enrollment(
     StudentId studentId, 
     CourseOfferingId courseOfferingId, 
     DateTime enrollmentDate, 
-    Money basePrice, 
+    Money Price, 
     Money discount, 
     string? discountCode): AggregateRoot
 {
     public EnrollmentId Id { get; private set; }= id;
     public StudentId StudentId { get; private set; }= studentId;
     public CourseOfferingId CourseOfferingId { get; private set; }= courseOfferingId;
-    public EnrollmentStatus Status { get; private set; }
     public DateTime EnrollmentDate { get; private set; }= enrollmentDate;
-    public Money BasePrice { get; private set; }= basePrice;
+    public Money Price { get; private set; }= Price;
     public Money Discount { get; private set; }= discount;
-    public Money FinalAmount { get; private set; }= basePrice - discount;
+    public Money FinalAmount { get; private set; }= Price - discount;
     public string? DiscountCode { get; private set; }= discountCode;
     public EnrollmentStatus Status { get; private set; } = EnrollmentStatus.Requested;
+    public DateTimeOffset RequestedAt { get; private set; }
+    public DateTimeOffset? ApprovedAt { get; private set; }
+    public DateTimeOffset? WithdrawnAt { get; private set; }
 
     public static Enrollment Create(
-        EnrollmentId id,
         StudentId studentId,
         CourseOfferingId courseOfferingId,
         DateTime enrollmentDate,
-        Money basePrice,
+        Money Price,
         Money discount,
         string? discountCode)
     {
         var enrollment = new Enrollment(
-            id, studentId, courseOfferingId, enrollmentDate, basePrice, discount, discountCode);
-
-        enrollment.RaiseDomainEvent(
-            new EnrollmentRequested(
-                id, studentId, courseOfferingId, basePrice, discount, enrollment.FinalAmount, discountCode));
+            EnrollmentId.Empty, studentId, courseOfferingId, enrollmentDate, Price, discount, discountCode);
 
         return enrollment;
+    }
+
+    public void AssignId(EnrollmentId id)
+    {
+        if (Id != EnrollmentId.Empty)
+            throw new InvalidOperationException("Enrollment ID has already been assigned.");
+
+        if (id == EnrollmentId.Empty)
+            throw new ArgumentException("Enrollment ID cannot be empty.", nameof(id));
+
+        Id = id;
+        RaiseDomainEvent(new EnrollmentRequested(
+            Id, StudentId, CourseOfferingId, Price, Discount, FinalAmount, DiscountCode));
     }
 
     public void Approve()

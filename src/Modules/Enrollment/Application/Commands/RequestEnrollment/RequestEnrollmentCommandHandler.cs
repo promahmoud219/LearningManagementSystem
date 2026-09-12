@@ -5,39 +5,33 @@ using LearningManagementSystem.Modules.Enrollment.Application.Services;
 
 using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
-using LearningManagementSystem.Modules.Enrollment.Domain.Repositories;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 
-using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+using LearningManagementSystem.Modules.CourseOffering.Contracts;
 
 using LearningManagementSystem.SharedKernel.Results;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+using EnrollmentAggregate = LearningManagementSystem.Modules.Enrollment.Domain.Aggregates.Enrollment;
 
 namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;                                                                 
 
-internal sealed class RequestEnrollmentCommandHandler
+internal sealed class RequestEnrollmentCommandHandler 
+    (EnrollmentEligibilityService enrollmentEligibilityService,
+     IEnrollmentRepository enrollmentRepository,
+     ICourseOfferingPricing pricing)
     : IRequestHandler<RequestEnrollmentCommand, OperationResult<EnrollmentId>>
 {
-    private readonly EnrollmentEligibilityService _enrollmentEligibilityService;
-    private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly ICourseOfferingPricing _pricing;
+    private readonly EnrollmentEligibilityService _enrollmentEligibilityService = enrollmentEligibilityService;
+    private readonly IEnrollmentRepository _enrollmentRepository = enrollmentRepository;
+    private readonly ICourseOfferingPricing _pricing = pricing;
 
-
-    public RequestEnrollmentCommandHandler(
-        EnrollmentEligibilityService eligibilityService,
-        ICourseOfferingPricing pricing,
-        IEnrollmentRepository enrollmentRepository)
-    {
-        _enrollmentEligibilityService = eligibilityService;
-        _enrollmentRepository = enrollmentRepository;
-        _pricing = pricing;
-    }
 
     public async Task<OperationResult<EnrollmentId>> Handle(
         RequestEnrollmentCommand request,
         CancellationToken cancellationToken)
     {
-        var eligibility = await _enrollmentEligibilityService.CheckEligibilityAsync(
+        var eligibility = await _enrollmentEligibilityService.IsEligibleAsync(
             request.StudentId, request.CourseOfferingId, cancellationToken);
 
         if (eligibility != EligibilityResult.Eligible)
@@ -50,8 +44,7 @@ internal sealed class RequestEnrollmentCommandHandler
 
         var discount = Money.Zero(basePrice.Currency); //  discount code, resolution 
 
-        var enrollment = Enrollment.Create(
-            EnrollmentId.Create(),
+        var enrollment = EnrollmentAggregate.Create(
             request.StudentId,
             request.CourseOfferingId,
             DateTime.UtcNow,
@@ -59,10 +52,8 @@ internal sealed class RequestEnrollmentCommandHandler
             discount,
             request.DiscountCode);
 
-        await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
+        var enrollmentId = await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
 
-        // TODO : SaveChanges + publish enrollment.DomainEvents with MediatR
-
-        return OperationResult<EnrollmentId>.Success(enrollment.Id);
+        return OperationResult<EnrollmentId>.Success(enrollmentId);
     }
 }

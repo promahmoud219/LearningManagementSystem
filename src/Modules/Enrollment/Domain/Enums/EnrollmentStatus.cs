@@ -1,9 +1,9 @@
 namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
 
-public enum EnrollmentStatus
+public enum EnrollmentStatus : byte
 {
-    Requested,
-    Approved,
-    Rejected,
-    Withdrawn
+    Requested = 0,
+    Approved = 1,
+    Rejected = 2,
+    Withdrawn = 3
 }   

@@ -1,7 +1,7 @@
 namespace LearningManagementSystem.SharedKernel.ValueObjects;
 
-public readonly record struct CourseOfferingId(Guid Value)
+public readonly record struct CourseOfferingId(int Value)
 {
-    public static CourseOfferingId New() => new(Guid.NewGuid());
-    public static CourseOfferingId Empty => new(Guid.Empty);
+    public static CourseOfferingId New() => new(Random.Shared.Next(1, int.MaxValue));
+    public static CourseOfferingId Empty => new(0);
 }

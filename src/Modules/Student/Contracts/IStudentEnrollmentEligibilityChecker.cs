@@ -1,11 +1,10 @@
 using LearningManagementSystem.SharedKernel.ValueObjects;
 
-namespace LearningManagementSystem.Modules.Student.Application.Contracts;
+namespace LearningManagementSystem.Modules.Student.Contracts;
 
 public interface IStudentEnrollmentEligibilityChecker
 {
     Task<StudentEnrollmentEligibilityResult> IsEligibleAsync(
         StudentId studentId,
-        CourseOfferingId courseOfferingId,
         CancellationToken cancellationToken);
 }

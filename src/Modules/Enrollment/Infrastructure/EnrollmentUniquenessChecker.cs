@@ -1,15 +1,34 @@
+using System.Data;
 using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+using Microsoft.Data.SqlClient;
 
 namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
 
-internal sealed class EnrollmentUniquenessChecker : IEnrollmentUniquenessChecker
+internal sealed class EnrollmentUniquenessChecker(string connectionString) : IEnrollmentUniquenessChecker
 {
-    public Task<bool> IsEnrollmentUniqueAsync(
+    public async Task<bool> IsEnrollmentUniqueAsync(
         StudentId studentId,
         CourseOfferingId courseOfferingId,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        const string sql = """
+            SELECT CASE WHEN EXISTS
+            (
+                SELECT 1
+                FROM dbo.Enrollment
+                WHERE StudentId = @StudentId
+                  AND CourseOfferingId = @CourseOfferingId
+                  AND StatusId IN (1, 2)
+            ) THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END;
+            """;
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add("@StudentId", SqlDbType.Int).Value = studentId.Value;
+        command.Parameters.Add("@CourseOfferingId", SqlDbType.Int).Value = courseOfferingId.Value;
+
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 }

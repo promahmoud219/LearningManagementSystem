@@ -1,11 +1,10 @@
 using LearningManagementSystem.SharedKernel.ValueObjects;
 
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+namespace LearningManagementSystem.Modules.CourseOffering.Contracts;
 
 public interface ICourseOfferingPricing
 {
     Task<Money> GetCurrentPriceAsync(
-        CourseOfferingId courseOfferingId, 
+        CourseOfferingId courseOfferingId,
         CancellationToken cancellationToken);
 }
-

@@ -3,6 +3,6 @@ namespace LearningManagementSystem.SharedKernel.Abstractions;
 
 public interface IDomainEvent : INotification 
 {
-    Guid EventId { get; }
+    int EventId { get; }
     DateTime OccurredOnUtc { get; }
 }

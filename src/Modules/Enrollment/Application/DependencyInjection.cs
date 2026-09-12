@@ -1,24 +1,27 @@
+using FluentValidation;
+using LearningManagementSystem.Modules.Enrollment.Application.Services;
+using LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
+using LearningManagementSystem.SharedKernel.Behaviors;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
-namespace LearningManagementSystem.Modules.Enrollment.Application; // ???? Enrollment ??? ????????
+namespace LearningManagementSystem.Modules.Enrollment.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddEnrollmentApplication(this IServiceCollection services)
+    public static IServiceCollection AddEnrollmentApplication(
+        this IServiceCollection services)
     {
-        // 1. ????? MediatR ????? ???? ??? ??????? ???
-        services.AddMediatR(config =>
+        services.AddMediatR(cfg =>
         {
-            config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+            cfg.RegisterServicesFromAssembly(
+                typeof(RequestEnrollmentCommandHandler).Assembly);
         });
 
-        // 2. ????? FluentValidation (?? ????????)
-        // services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-
-        // 3. ????? ??? Services ?????? ?????????
-        // services.AddScoped<IEnrollmentEligibilityService, EnrollmentEligibilityService>();
+        services.AddValidatorsFromAssemblyContaining<RequestEnrollmentCommandValidator>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped<EnrollmentEligibilityService>();
 
         return services;
     }
-}
+}   

@@ -18,3 +18,4 @@ public sealed record EnrollmentWindow
     public bool IsOpen(DateTime currentDate) =>
         currentDate >= StartDate && currentDate <= EndDate;
 }
+
