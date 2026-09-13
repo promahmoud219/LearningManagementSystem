@@ -24,29 +24,39 @@
 │   │   │   └── launchSettings.json
 │   │   ├── appsettings.Development.json
 │   │   └── appsettings.json
+│   ├── Database
+│   │   └── Migrations
+│   │       └── 20260912_EnrollmentIdIdentity.sql
 │   ├── Modules
 │   │   ├── CourseOffering
 │   │   │   ├── Application
 │   │   │   │   ├── Contracts
-│   │   │   │   │   ├── CourseOfferingEnrollmentEligibilityResult.cs
-│   │   │   │   │   ├── ICourseOfferingEnrollmentEligibilityChecker.cs
-│   │   │   │   │   └── ICourseOfferingPricing.cs
 │   │   │   │   ├── DependencyInjection.cs
 │   │   │   │   ├── LearningManagementSystem.Modules.CourseOffering.Application.csproj
+│   │   │   │   ├── Repositories
+│   │   │   │   │   └── ICourseOfferingRepository.cs
 │   │   │   │   └── Services
 │   │   │   │       ├── CourseOfferingEnrollmentEligibilityChecker.cs
+│   │   │   │       ├── CourseOfferingEnrollmentInfoProvider.cs
 │   │   │   │       └── CourseOfferingPricingService.cs
+│   │   │   ├── Contracts
+│   │   │   │   ├── CourseOfferingEnrollmentEligibilityResult.cs
+│   │   │   │   ├── CourseOfferingEnrollmentInfo.cs
+│   │   │   │   ├── ICourseOfferingEnrollmentEligibilityChecker.cs
+│   │   │   │   ├── ICourseOfferingEnrollmentInfoProvider.cs
+│   │   │   │   ├── ICourseOfferingPricingService.cs
+│   │   │   │   └── LearningManagementSystem.Modules.CourseOffering.Contracts.csproj
 │   │   │   ├── Domain
 │   │   │   │   ├── Aggregates
 │   │   │   │   │   └── CourseOffering.cs
 │   │   │   │   ├── LearningManagementSystem.Modules.CourseOffering.Domain.csproj
 │   │   │   │   ├── Repositories
-│   │   │   │   │   └── ICourseOfferingRepository.cs
 │   │   │   │   └── ValueObjects
 │   │   │   │       └── EnrollmentWindow.cs
 │   │   │   └── Infrastructure
 │   │   │       ├── DependencyInjection.cs
-│   │   │       └── LearningManagementSystem.Modules.CourseOffering.Infrastructure.csproj
+│   │   │       ├── LearningManagementSystem.Modules.CourseOffering.Infrastructure.csproj
+│   │   │       └── SqlCourseOfferingRepository.cs
 │   │   ├── Enrollment
 │   │   │   ├── Application
 │   │   │   │   ├── Commands
@@ -69,6 +79,8 @@
 │   │   │   │   │   └── GetStudentEnrollments
 │   │   │   │   │       ├── GetStudentEnrollmentsQuery.cs
 │   │   │   │   │       └── GetStudentEnrollmentsQueryHandler.cs
+│   │   │   │   ├── Repositories
+│   │   │   │   │   └── IEnrollmentRepository.cs
 │   │   │   │   └── Services
 │   │   │   │       ├── EnrollmentEligibilityService.cs
 │   │   │   │       └── WithdrawalPolicyService.cs
@@ -86,15 +98,15 @@
 │   │   │   │   │   └── EnrollmentWithdrawn.cs
 │   │   │   │   ├── LearningManagementSystem.Modules.Enrollment.Domain.csproj
 │   │   │   │   ├── Repositories
-│   │   │   │   │   └── IEnrollmentRepository.cs
 │   │   │   │   └── ValueObjects
 │   │   │   │       └── EnrollmentId.cs
 │   │   │   ├── Infrastructure
 │   │   │   │   ├── DependencyInjection.cs
 │   │   │   │   ├── EnrollmentUniquenessChecker.cs
 │   │   │   │   ├── LearningManagementSystem.Modules.Enrollment.Infrastructure.csproj
-│   │   │   │   └── Persistence
-│   │   │   │       └── Queries
+│   │   │   │   ├── Persistence
+│   │   │   │   │   └── Queries
+│   │   │   │   └── SqlEnrollmentRepository.cs
 │   │   │   └── Tests
 │   │   ├── Payment
 │   │   │   ├── Application
@@ -110,28 +122,31 @@
 │   │   │       └── LearningManagementSystem.Modules.Payment.Infrastructure.csproj
 │   │   └── Student
 │   │       ├── Application
-│   │       │   ├── Contracts
-│   │       │   │   ├── IStudentEnrollmentEligibilityChecker.cs
-│   │       │   │   ├── IStudentEnrollmentInfoProvider.cs
-│   │       │   │   ├── StudentEnrollmentEligibilityResult.cs
-│   │       │   │   └── StudentEnrollmentInfo.cs
 │   │       │   ├── DependencyInjection.cs
 │   │       │   ├── LearningManagementSystem.Modules.Student.Application.csproj
+│   │       │   ├── Repositories
+│   │       │   │   └── IStudentRepository.cs
 │   │       │   └── Services
-│   │       │       └── StudentEnrollmentEligibilityChecker.cs
+│   │       │       ├── StudentEnrollmentEligibilityChecker.cs
+│   │       │       └── StudentEnrollmentInfoProvider.cs
 │   │       ├── Contracts
-│   │       │   ├── Class1.cs
-│   │       │   └── LearningManagementSystem.Modules.Student.Contracts.csproj
+│   │       │   ├── IStudentEnrollmentEligibilityChecker.cs
+│   │       │   ├── IStudentEnrollmentInfoProvider.cs
+│   │       │   ├── LearningManagementSystem.Modules.Student.Contracts.csproj
+│   │       │   ├── StudentEnrollmentEligibilityResult.cs
+│   │       │   └── StudentEnrollmentInfo.cs
 │   │       ├── Domain
 │   │       │   ├── Aggregates
 │   │       │   │   └── Student.cs
 │   │       │   ├── LearningManagementSystem.Modules.Student.Domain.csproj
+│   │       │   ├── Repositories
 │   │       │   └── ValueObjects
 │   │       │       ├── Email.cs
 │   │       │       └── Name.cs
 │   │       └── Infrastructure
 │   │           ├── DependencyInjection.cs
-│   │           └── LearningManagementSystem.Modules.Student.Infrastructure.csproj
+│   │           ├── LearningManagementSystem.Modules.Student.Infrastructure.csproj
+│   │           └── SqlStudentRepository.cs
 │   ├── ServiceDefaults
 │   │   ├── Extensions.cs
 │   │   └── LearningManagementSystem.ServiceDefaults.csproj
@@ -147,10 +162,12 @@
 │       │   └── OperationStatus.cs
 │       ├── ValidationBehavior.cs
 │       ├── ValueObjects
+│       │   ├── CourseId.cs
 │       │   ├── CourseOfferingId.cs
 │       │   ├── Department.cs
 │       │   ├── Money.cs
-│       │   └── StudentId.cs
+│       │   ├── StudentId.cs
+│       │   └── TermId.cs
 │       └── enums
 ├── tests
 │   ├── Api.IntegrationTests
@@ -177,4 +194,4 @@
 ├── tree_output.txt
 └── vim.cs
 
-74 directories, 103 files
+80 directories, 114 files

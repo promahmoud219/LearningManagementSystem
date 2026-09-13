@@ -14,9 +14,9 @@ using LearningManagementSystem.SharedKernel.Results;
 using LearningManagementSystem.SharedKernel.ValueObjects;
 using EnrollmentAggregate = LearningManagementSystem.Modules.Enrollment.Domain.Aggregates.Enrollment;
 
-namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;                                                                 
+namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
 
-internal sealed class RequestEnrollmentCommandHandler 
+internal sealed class RequestEnrollmentCommandHandler
     (EnrollmentEligibilityService enrollmentEligibilityService,
      IEnrollmentRepository enrollmentRepository,
      ICourseOfferingPricing pricing)

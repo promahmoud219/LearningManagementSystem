@@ -8,22 +8,22 @@ using LearningManagementSystem.SharedKernel.ValueObjects;
 namespace LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
 
 public sealed class Enrollment(
-    EnrollmentId id, 
-    StudentId studentId, 
-    CourseOfferingId courseOfferingId, 
-    DateTime enrollmentDate, 
-    Money Price, 
-    Money discount, 
-    string? discountCode): AggregateRoot
+    EnrollmentId id,
+    StudentId studentId,
+    CourseOfferingId courseOfferingId,
+    DateTime enrollmentDate,
+    Money Price,
+    Money discount,
+    string? discountCode) : AggregateRoot
 {
-    public EnrollmentId Id { get; private set; }= id;
-    public StudentId StudentId { get; private set; }= studentId;
-    public CourseOfferingId CourseOfferingId { get; private set; }= courseOfferingId;
-    public DateTime EnrollmentDate { get; private set; }= enrollmentDate;
-    public Money Price { get; private set; }= Price;
-    public Money Discount { get; private set; }= discount;
-    public Money FinalAmount { get; private set; }= Price - discount;
-    public string? DiscountCode { get; private set; }= discountCode;
+    public EnrollmentId Id { get; private set; } = id;
+    public StudentId StudentId { get; private set; } = studentId;
+    public CourseOfferingId CourseOfferingId { get; private set; } = courseOfferingId;
+    public DateTime EnrollmentDate { get; private set; } = enrollmentDate;
+    public Money Price { get; private set; } = Price;
+    public Money Discount { get; private set; } = discount;
+    public Money FinalAmount { get; private set; } = Price - discount;
+    public string? DiscountCode { get; private set; } = discountCode;
     public EnrollmentStatus Status { get; private set; } = EnrollmentStatus.Requested;
     public DateTimeOffset RequestedAt { get; private set; }
     public DateTimeOffset? ApprovedAt { get; private set; }

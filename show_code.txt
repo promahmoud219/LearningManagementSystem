@@ -1,230 +1,6 @@
-=== ./src/Api/Program.cs ===
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
-
-=== ./src/AppHost/Program.cs ===
-var builder = DistributedApplication.CreateBuilder(args);
-
-builder.Build().Run();
-
-=== ./src/Modules/CourseOffering/Application/Contracts/CourseOfferingEnrollmentEligibilityResult.cs ===
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-
-public enum CourseOfferingEligibilityResult
-{
-    Eligible,  
-    Closed,    
-    Full       
-}
-=== ./src/Modules/CourseOffering/Application/Contracts/ICourseOfferingEnrollmentEligibilityChecker.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-
-public interface ICourseOfferingEnrollmentEligibilityChecker
-{
-    Task<CourseOfferingEligibilityResult> IsEligibleAsync(
-        CourseOfferingId courseOfferingId,
-        CancellationToken cancellationToken);
-}
-=== ./src/Modules/CourseOffering/Application/Contracts/ICourseOfferingPricing.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-
-public interface ICourseOfferingPricing
-{
-    Task<Money> GetCurrentPriceAsync(
-        CourseOfferingId courseOfferingId, 
-        CancellationToken cancellationToken);
-}
-
-
-=== ./src/Modules/CourseOffering/Application/Services/CourseOfferingEnrollmentEligibilityChecker.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
-using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-using LearningManagementSystem.Modules.CourseOffering.Domain.Repositories;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Services;
-
-internal sealed class CourseOfferingEnrollmentEligibilityChecker(ICourseOfferingRepository repository) 
-    : ICourseOfferingEnrollmentEligibilityChecker
-{
-    private readonly ICourseOfferingRepository _repository = repository;
-
-    public async Task<CourseOfferingEligibilityResult> IsEligibleAsync(
-        CourseOfferingId courseOfferingId,
-        CancellationToken cancellationToken)
-    {
-        var courseOffering = await _repository.GetByIdAsync(courseOfferingId, cancellationToken);
-
-        if (courseOffering is null)
-            throw new InvalidOperationException($"Course offering with ID '{courseOfferingId.Value}' " +
-                                                $"  was not found.");
-
-
-        if (courseOffering.IsEnrollmentClosed(DateTime.UtcNow))
-            return CourseOfferingEligibilityResult.Closed;
-
-
-        if (courseOffering.IsFull())
-            return CourseOfferingEligibilityResult.Full;
-
-
-        return CourseOfferingEligibilityResult.Eligible;
-    }
-}
-=== ./src/Modules/CourseOffering/Application/Services/CourseOfferingPricingService.cs ===
-using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-using LearningManagementSystem.Modules.CourseOffering.Domain.Repositories;  
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Application.Services;
-
-internal sealed class CourseOfferingPricingService(ICourseOfferingRepository repository) : ICourseOfferingPricing
-{
-    private readonly ICourseOfferingRepository _repository = repository;
-
-    public async Task<Money> GetCurrentPriceAsync(
-        CourseOfferingId courseOfferingId, 
-        CancellationToken cancellationToken)
-    {
-        var courseOffering = await _repository.GetByIdAsync(courseOfferingId, cancellationToken);
-
-        if (courseOffering is null)
-            throw new InvalidOperationException($"Course offering with ID '{courseOfferingId.Value}' " +
-                                                $"was not found.");
-
-        return courseOffering.Price; 
-    }
-}
-=== ./src/Modules/CourseOffering/Domain/Aggregates/CourseOffering.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
-
-public sealed class CourseOffering(
-    CourseOfferingId id, 
-    CourseId courseId, 
-    Money price,
-    EnrollmentWindow enrollmentWindow, 
-    int capacity
-    ) : AggregateRoot
-{
-    public CourseOfferingId Id { get; private set; }= id;
-    public CourseId CourseId { get; private set; }= courseId;
-    public Money Price { get; private set; } = price;
-    public EnrollmentWindow EnrollmentWindow { get; private set; }= enrollmentWindow;
-    public int Capacity { get; private set; }= capacity;
-    public int CurrentEnrollmentCount { get; private set; }= 0;
-    public bool IsClosedManually { get; private set; } = false;
-
-
-    public static CourseOffering Create(
-        CourseOfferingId id,
-        int courseId,
-        Money price,
-        Department department,
-        EnrollmentWindow enrollmentWindow,
-        int maxCapacity) 
-        => new (id, courseId, price, enrollmentWindow, maxCapacity);
-
-
-    public bool IsFull() => CurrentEnrollmentCount >= Capacity;
-  
-    public void IncrementEnrollment()
-    {
-        if (IsFull()) 
-            throw new InvalidOperationException("Course offering is full.");
-
-        CurrentEnrollmentCount++;
-    }  
-    
-    public bool IsEnrollmentClosed(DateTime currentDate) 
-        => IsClosedManually || !EnrollmentWindow.IsOpen(currentDate);
-
-    public void EnrollStudent()
-    {
-        if (IsFull())
-            throw new InvalidOperationException("Course offering is full.");
-        CurrentEnrollmentCount++;
-    }
-}
-
-=== ./src/Modules/CourseOffering/Domain/Repositories/ICourseOfferingRepository.cs ===
-using LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-namespace LearningManagementSystem.Modules.CourseOffering.Domain.Repositories;
-
-public interface ICourseOfferingRepository
-{
-    Task<CourseOffering?> GetByIdAsync(CourseOfferingId id, CancellationToken cancellationToken);
-    Task AddAsync(CourseOffering courseOffering, CancellationToken cancellationToken);
-}
-=== ./src/Modules/CourseOffering/Domain/ValueObjects/EnrollmentWindow.cs ===
-namespace LearningManagementSystem.Modules.CourseOffering.Domain.ValueObjects;
-
-public sealed record EnrollmentWindow
-{
-    public DateTime StartDate { get; }
-    public DateTime EndDate { get; }
-
-    public EnrollmentWindow(DateTime startDate, DateTime endDate)
-    {
-        if (startDate >= endDate)
-            throw new ArgumentException("Start date must be before end date.");
-
-        StartDate = startDate;
-        EndDate = endDate;
-    }
-
-    
-    public bool IsOpen(DateTime currentDate) =>
-        currentDate >= StartDate && currentDate <= EndDate;
-}
-
-
-=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommand.cs ===
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommand.cs
+==========================================
 using MediatR;
 
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
@@ -237,7 +13,11 @@ public sealed record RequestEnrollmentCommand(
     StudentId StudentId,
     CourseOfferingId CourseOfferingId,
     string? DiscountCode) : IRequest<OperationResult<EnrollmentId>>;
-=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandHandler.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandHandler.cs
+==========================================
 using MediatR;
 
 using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
@@ -245,33 +25,27 @@ using LearningManagementSystem.Modules.Enrollment.Application.Services;
 
 using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
-using LearningManagementSystem.Modules.Enrollment.Domain.Repositories;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 
-using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
+using LearningManagementSystem.Modules.CourseOffering.Contracts;
 
 using LearningManagementSystem.SharedKernel.Results;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+using EnrollmentAggregate = LearningManagementSystem.Modules.Enrollment.Domain.Aggregates.Enrollment;
 
-namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;                                                                 
+namespace LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
 
 internal sealed class RequestEnrollmentCommandHandler
+    (EnrollmentEligibilityService enrollmentEligibilityService,
+     IEnrollmentRepository enrollmentRepository,
+     ICourseOfferingPricing pricing)
     : IRequestHandler<RequestEnrollmentCommand, OperationResult<EnrollmentId>>
 {
-    private readonly EnrollmentEligibilityService _enrollmentEligibilityService;
-    private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly ICourseOfferingPricing _pricing;
+    private readonly EnrollmentEligibilityService _enrollmentEligibilityService = enrollmentEligibilityService;
+    private readonly IEnrollmentRepository _enrollmentRepository = enrollmentRepository;
+    private readonly ICourseOfferingPricing _pricing = pricing;
 
-
-    public RequestEnrollmentCommandHandler(
-        EnrollmentEligibilityService eligibilityService,
-        ICourseOfferingPricing pricing,
-        IEnrollmentRepository enrollmentRepository)
-    {
-        _enrollmentEligibilityService = eligibilityService;
-        _enrollmentRepository = enrollmentRepository;
-        _pricing = pricing;
-    }
 
     public async Task<OperationResult<EnrollmentId>> Handle(
         RequestEnrollmentCommand request,
@@ -290,8 +64,7 @@ internal sealed class RequestEnrollmentCommandHandler
 
         var discount = Money.Zero(basePrice.Currency); //  discount code, resolution 
 
-        var enrollment = Enrollment.Create(
-            EnrollmentId.Create(),
+        var enrollment = EnrollmentAggregate.Create(
             request.StudentId,
             request.CourseOfferingId,
             DateTime.UtcNow,
@@ -299,14 +72,17 @@ internal sealed class RequestEnrollmentCommandHandler
             discount,
             request.DiscountCode);
 
-        await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
+        var enrollmentId = await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
 
-        // TODO : SaveChanges + publish enrollment.DomainEvents with MediatR
-
-        return OperationResult<EnrollmentId>.Success(enrollment.Id);
+        return OperationResult<EnrollmentId>.Success(enrollmentId);
     }
 }
-=== ./src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandValidator.cs ===
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/RequestEnrollment/RequestEnrollmentCommandValidator.cs
+==========================================
 using FluentValidation;
 using LearningManagementSystem.SharedKernel.ValueObjects;
 
@@ -330,7 +106,29 @@ public sealed class RequestEnrollmentCommandValidator : AbstractValidator<Reques
             .WithMessage("Discount code is too long.");
     }
 }
-=== ./src/Modules/Enrollment/Application/Contracts/IEnrollmentUniquenessChecker.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommand.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommandHandler.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Commands/WithdrawEnrollment/WithdrawEnrollmentCommandValidator.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Contracts/IEnrollmentUniquenessChecker.cs
+==========================================
 using LearningManagementSystem.SharedKernel.ValueObjects;
 
 namespace LearningManagementSystem.Modules.Enrollment.Application.Contracts;
@@ -343,56 +141,133 @@ public interface IEnrollmentUniquenessChecker
         CancellationToken cancellationToken);
 
 }
-=== ./src/Modules/Enrollment/Application/DependencyInjection.cs ===
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
-namespace LearningManagementSystem.Modules.Enrollment.Application; // ???? Enrollment ??? ????????
+
+==========================================
+FILE: src/Modules/Enrollment/Application/DependencyInjection.cs
+==========================================
+using FluentValidation;
+using LearningManagementSystem.Modules.Enrollment.Application.Services;
+using LearningManagementSystem.Modules.Enrollment.Application.Commands.RequestEnrollment;
+using LearningManagementSystem.SharedKernel.Behaviors;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddEnrollmentApplication(this IServiceCollection services)
+    public static IServiceCollection AddEnrollmentApplication(
+        this IServiceCollection services)
     {
-        // 1. ????? MediatR ????? ???? ??? ??????? ???
-        services.AddMediatR(config =>
+        services.AddMediatR(cfg =>
         {
-            config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+            cfg.RegisterServicesFromAssembly(
+                typeof(RequestEnrollmentCommandHandler).Assembly);
         });
 
-        // 2. ????? FluentValidation (?? ????????)
-        // services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-
-        // 3. ????? ??? Services ?????? ?????????
-        // services.AddScoped<IEnrollmentEligibilityService, EnrollmentEligibilityService>();
+        services.AddValidatorsFromAssemblyContaining<RequestEnrollmentCommandValidator>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped<EnrollmentEligibilityService>();
 
         return services;
     }
+}   
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/LearningManagementSystem.Modules.Enrollment.Application.csproj
+==========================================
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\LearningManagementSystem.Modules.Enrollment.Domain.csproj" />
+    <ProjectReference Include="..\..\Student\Contracts\LearningManagementSystem.Modules.Student.Contracts.csproj" />
+	<ProjectReference Include="..\..\CourseOffering\Contracts\LearningManagementSystem.Modules.CourseOffering.Contracts.csproj" />
+	<ProjectReference Include="..\..\..\SharedKernel\LearningManagementSystem.SharedKernel.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+    <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Queries/GetEnrollment/GetEnrollmentQuery.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Queries/GetEnrollment/GetEnrollmentQueryHandler.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Queries/GetStudentEnrollments/GetStudentEnrollmentsQuery.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Queries/GetStudentEnrollments/GetStudentEnrollmentsQueryHandler.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Repositories/IEnrollmentRepository.cs
+==========================================
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using EnrollmentAggregate = LearningManagementSystem.Modules.Enrollment.Domain.Aggregates.Enrollment;
+
+namespace LearningManagementSystem.Modules.Enrollment.Application.Repositories;
+
+public interface IEnrollmentRepository
+{
+    Task<EnrollmentId> AddAsync(EnrollmentAggregate enrollment, CancellationToken cancellationToken);
 }
-=== ./src/Modules/Enrollment/Application/Services/EnrollmentEligibilityService.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Services/EnrollmentEligibilityService.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+using LearningManagementSystem.Modules.CourseOffering.Contracts;
+using LearningManagementSystem.Modules.Student.Contracts;
 using LearningManagementSystem.SharedKernel.ValueObjects; 
 
-using LearningManagementSystem.Modules.CourseOffering.Application.Contracts;
-using LearningManagementSystem.Modules.Student.Application.Contracts;
 
 namespace LearningManagementSystem.Modules.Enrollment.Application.Services;
 
-internal sealed class EnrollmentEligibilityService
+internal sealed class EnrollmentEligibilityService (
+    IStudentEnrollmentEligibilityChecker studentEligibility,
+    ICourseOfferingEnrollmentEligibilityChecker courseOfferingEligibility,
+    ICourseOfferingEnrollmentInfoProvider courseOfferingInfoProvider,
+    IStudentEnrollmentInfoProvider studentInfoProvider,
+    IEnrollmentUniquenessChecker uniquenessChecker) 
+    
 {
-    private readonly IStudentEnrollmentEligibilityChecker _studentEligibility;
-    private readonly ICourseOfferingEnrollmentEligibilityChecker _courseOfferingEligibility;
-    private readonly IEnrollmentUniquenessChecker _uniquenessChecker;
+    private readonly IStudentEnrollmentEligibilityChecker _studentEligibility = studentEligibility;
+    private readonly ICourseOfferingEnrollmentEligibilityChecker _courseOfferingEligibility = courseOfferingEligibility;
+    private readonly IStudentEnrollmentInfoProvider _studentInfoProvider = studentInfoProvider;
+    private readonly ICourseOfferingEnrollmentInfoProvider _courseOfferingInfoProvider = courseOfferingInfoProvider;
+    private readonly IEnrollmentUniquenessChecker _uniquenessChecker = uniquenessChecker;
 
-    public EnrollmentEligibilityService(
-        IStudentEnrollmentEligibilityChecker studentEligibility,
-        ICourseOfferingEnrollmentEligibilityChecker  courseOfferingEligibility,
-        IEnrollmentUniquenessChecker uniquenessChecker)
-    {
-        _studentEligibility = studentEligibility;
-        _courseOfferingEligibility = courseOfferingEligibility;
-        _uniquenessChecker = uniquenessChecker;
-    }
 
     public async Task<EligibilityResult> IsEligibleAsync(
         StudentId studentId,
@@ -400,13 +275,16 @@ internal sealed class EnrollmentEligibilityService
         CancellationToken cancellationToken)
     {
         var studentResult = await _studentEligibility.IsEligibleAsync(
-            studentId, courseOfferingId, cancellationToken);
+            studentId, cancellationToken);
 
-        if (studentResult == StudentEnrollmentEligibilityResult.PrerequisitesNotMet)
-            return EligibilityResult.PrerequisitesNotMet;
+        if (studentResult != StudentEnrollmentEligibilityResult.Eligible)
+            return EligibilityResult.InvalidStudent;
 
         var courseResult = await _courseOfferingEligibility.IsEligibleAsync(
             courseOfferingId, cancellationToken);
+
+        if (courseResult == CourseOfferingEligibilityResult.NotFound)
+            return EligibilityResult.InvalidCourseOffering;
 
         if (courseResult == CourseOfferingEligibilityResult.Closed)
             return EligibilityResult.OutsideEnrollmentWindow;
@@ -414,17 +292,42 @@ internal sealed class EnrollmentEligibilityService
         if (courseResult == CourseOfferingEligibilityResult.Full)
             return EligibilityResult.CapacityExceeded;
 
-        var isUnique = await _uniquenessChecker.IsEnrollmentUniqueAsync(
+        var studentInfo = await _studentInfoProvider.GetAsync(
+            studentId, cancellationToken);
+
+        var courseOfferingInfo = await _courseOfferingInfoProvider.GetAsync(
+            courseOfferingId, cancellationToken);
+
+        if (studentInfo is null || courseOfferingInfo is null)
+            return studentInfo is null
+                ? EligibilityResult.InvalidStudent
+                : EligibilityResult.InvalidCourseOffering;
+
+        if (studentInfo.Department != courseOfferingInfo.Department)
+            return EligibilityResult.DepartmentMismatch; 
+
+        var isEnrollmentUnique = await _uniquenessChecker.IsEnrollmentUniqueAsync(
             studentId, courseOfferingId, cancellationToken);
 
-        if (!isUnique)
+        if (!isEnrollmentUnique)
             return EligibilityResult.DuplicateEnrollment;
 
         return EligibilityResult.Eligible;
     }
  
 }
-=== ./src/Modules/Enrollment/Domain/Aggregates/Enrollment.cs ===
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Application/Services/WithdrawalPolicyService.cs
+==========================================
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Aggregates/Enrollment.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 using LearningManagementSystem.Modules.Enrollment.Domain.Events;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
@@ -435,26 +338,28 @@ using LearningManagementSystem.SharedKernel.ValueObjects;
 namespace LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
 
 public sealed class Enrollment(
-    EnrollmentId id, 
-    StudentId studentId, 
-    CourseOfferingId courseOfferingId, 
-    DateTime enrollmentDate, 
-    Money Price, 
-    Money discount, 
-    string? discountCode): AggregateRoot
+    EnrollmentId id,
+    StudentId studentId,
+    CourseOfferingId courseOfferingId,
+    DateTime enrollmentDate,
+    Money Price,
+    Money discount,
+    string? discountCode) : AggregateRoot
 {
-    public EnrollmentId Id { get; private set; }= id;
-    public StudentId StudentId { get; private set; }= studentId;
-    public CourseOfferingId CourseOfferingId { get; private set; }= courseOfferingId;
-    public DateTime EnrollmentDate { get; private set; }= enrollmentDate;
-    public Money Price { get; private set; }= Price;
-    public Money Discount { get; private set; }= discount;
-    public Money FinalAmount { get; private set; }= Price - discount;
-    public string? DiscountCode { get; private set; }= discountCode;
+    public EnrollmentId Id { get; private set; } = id;
+    public StudentId StudentId { get; private set; } = studentId;
+    public CourseOfferingId CourseOfferingId { get; private set; } = courseOfferingId;
+    public DateTime EnrollmentDate { get; private set; } = enrollmentDate;
+    public Money Price { get; private set; } = Price;
+    public Money Discount { get; private set; } = discount;
+    public Money FinalAmount { get; private set; } = Price - discount;
+    public string? DiscountCode { get; private set; } = discountCode;
     public EnrollmentStatus Status { get; private set; } = EnrollmentStatus.Requested;
+    public DateTimeOffset RequestedAt { get; private set; }
+    public DateTimeOffset? ApprovedAt { get; private set; }
+    public DateTimeOffset? WithdrawnAt { get; private set; }
 
     public static Enrollment Create(
-        EnrollmentId id,
         StudentId studentId,
         CourseOfferingId courseOfferingId,
         DateTime enrollmentDate,
@@ -463,19 +368,26 @@ public sealed class Enrollment(
         string? discountCode)
     {
         var enrollment = new Enrollment(
-            id, studentId, courseOfferingId, enrollmentDate, Price, discount, discountCode);
+            EnrollmentId.Empty, studentId, courseOfferingId, enrollmentDate, Price, discount, discountCode);
 
-        enrollment.RaiseDomainEvent(
-            new EnrollmentRequested(
-                id, studentId, courseOfferingId, Price, discount, enrollment.FinalAmount, discountCode));
         return enrollment;
     }
 
-    public void Approve()
-    {   public int add(int x, int y)
+    public void AssignId(EnrollmentId id)
     {
-        return x + y;
+        if (Id != EnrollmentId.Empty)
+            throw new InvalidOperationException("Enrollment ID has already been assigned.");
+
+        if (id == EnrollmentId.Empty)
+            throw new ArgumentException("Enrollment ID cannot be empty.", nameof(id));
+
+        Id = id;
+        RaiseDomainEvent(new EnrollmentRequested(
+            Id, StudentId, CourseOfferingId, Price, Discount, FinalAmount, DiscountCode));
     }
+
+    public void Approve()
+    {
         if (Status != EnrollmentStatus.Requested)
             throw new InvalidOperationException("Only requested enrollments can be approved.");
 
@@ -501,28 +413,45 @@ public sealed class Enrollment(
         RaiseDomainEvent(new EnrollmentWithdrawn(Id));
     }
 }
-=== ./src/Modules/Enrollment/Domain/Enums/EligibilityResult.cs ===
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Enums/EligibilityResult.cs
+==========================================
 namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
 
-public enum EligibilityResult
+public enum EligibilityResult : byte
 {
     Eligible = 0,
     PrerequisitesNotMet = 1,
     DuplicateEnrollment = 2,
     CapacityExceeded = 3,
-    OutsideEnrollmentWindow = 4
+    OutsideEnrollmentWindow = 4,
+    DepartmentMismatch = 5,
+    InvalidStudent = 6,
+    InvalidCourseOffering = 7
 }
-=== ./src/Modules/Enrollment/Domain/Enums/EnrollmentStatus.cs ===
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Enums/EnrollmentStatus.cs
+==========================================
 namespace LearningManagementSystem.Modules.Enrollment.Domain.Enums;
 
-public enum EnrollmentStatus
+public enum EnrollmentStatus : byte
 {
-    Requested,
-    Approved,
-    Rejected,
-    Withdrawn
+    Requested = 0,
+    Approved = 1,
+    Rejected = 2,
+    Withdrawn = 3
 }   
-=== ./src/Modules/Enrollment/Domain/Events/EnrollmentApproved.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Events/EnrollmentApproved.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 using LearningManagementSystem.SharedKernel.Abstractions;
 
@@ -530,7 +459,11 @@ namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
 
 public sealed record EnrollmentApproved(
     EnrollmentId EnrollmentId) : DomainEvent;
-=== ./src/Modules/Enrollment/Domain/Events/EnrollmentRejected.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Events/EnrollmentRejected.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 using LearningManagementSystem.SharedKernel.Abstractions;
 
@@ -538,7 +471,11 @@ namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
 
 public sealed record EnrollmentRejected(
     EnrollmentId EnrollmentId) : DomainEvent;
-=== ./src/Modules/Enrollment/Domain/Events/EnrollmentRequested.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Events/EnrollmentRequested.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 using LearningManagementSystem.SharedKernel.Abstractions;
 using LearningManagementSystem.SharedKernel.ValueObjects;
@@ -554,7 +491,11 @@ public sealed record EnrollmentRequested(
     Money FinalAmount,
     string? DiscountCode = null) : DomainEvent;
 
-=== ./src/Modules/Enrollment/Domain/Events/EnrollmentWithdrawn.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/Events/EnrollmentWithdrawn.cs
+==========================================
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 using LearningManagementSystem.SharedKernel.Abstractions;
 
@@ -562,569 +503,178 @@ namespace LearningManagementSystem.Modules.Enrollment.Domain.Events;
 
 public sealed record EnrollmentWithdrawn(
     EnrollmentId EnrollmentId) : DomainEvent;
-=== ./src/Modules/Enrollment/Domain/Repositories/IEnrollmentRepository.cs ===
-using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
-using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 
-namespace LearningManagementSystem.Modules.Enrollment.Domain.Repositories;
 
-public interface IEnrollmentRepository
-{
-    Task<Enrollment?> GetByIdAsync(EnrollmentId id, CancellationToken cancellationToken);
+==========================================
+FILE: src/Modules/Enrollment/Domain/LearningManagementSystem.Modules.Enrollment.Domain.csproj
+==========================================
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    Task AddAsync(Enrollment enrollment, CancellationToken cancellationToken);
-}
-=== ./src/Modules/Enrollment/Domain/ValueObjects/EnrollmentId.cs ===
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\SharedKernel\LearningManagementSystem.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Domain/ValueObjects/EnrollmentId.cs
+==========================================
 namespace LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
 
 public sealed record EnrollmentId(int Value)
 {
-    public static EnrollmentId Create() => new(int.Newint());
+    public static EnrollmentId Empty => new(0);
 }
-=== ./src/Modules/Enrollment/Infrastructure/DependencyInjection.cs ===
+
+
+==========================================
+FILE: src/Modules/Enrollment/Infrastructure/DependencyInjection.cs
+==========================================
+using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace LearningManagementSystem.Modules.Enrollment.Infrastructure; // ???? Enrollment ??? ????????
+namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddEnrollmentInfrastructure(this IServiceCollection services/*, IConfiguration configuration*/)
+    public static IServiceCollection AddEnrollmentInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        // 1. ????? ??? DbContext (????? ????????)
-        // services.AddDbContext<EnrollmentDbContext>(options => ...);
+        var connectionString = configuration.GetConnectionString("LmsDatabase")
+            ?? throw new InvalidOperationException("Connection string 'LmsDatabase' is not configured.");
 
-        // 2. ????? ??? Repositories
-        // services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
-
-        // 3. ????? ??? Checkers/External services
-        // services.AddScoped<IEnrollmentUniquenessChecker, EnrollmentUniquenessChecker>();
+        services.AddScoped<IEnrollmentRepository>(_ => new SqlEnrollmentRepository(connectionString));
+        services.AddScoped<IEnrollmentUniquenessChecker>(
+            _ => new EnrollmentUniquenessChecker(connectionString));
 
         return services;
     }
 }
-=== ./src/Modules/Enrollment/Infrastructure/EnrollmentUniquenessChecker.cs ===
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Infrastructure/EnrollmentUniquenessChecker.cs
+==========================================
+using System.Data;
 using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+using Microsoft.Data.SqlClient;
 
 namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
 
-internal sealed class EnrollmentUniquenessChecker : IEnrollmentUniquenessChecker
+internal sealed class EnrollmentUniquenessChecker(string connectionString) : IEnrollmentUniquenessChecker
 {
-    public Task<bool> IsEnrollmentUniqueAsync(
+    public async Task<bool> IsEnrollmentUniqueAsync(
         StudentId studentId,
         CourseOfferingId courseOfferingId,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        const string sql = """
+            SELECT CASE WHEN EXISTS
+            (
+                SELECT 1
+                FROM dbo.Enrollment
+                WHERE StudentId = @StudentId
+                  AND CourseOfferingId = @CourseOfferingId
+                  AND StatusId IN (1, 2)
+            ) THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END;
+            """;
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add("@StudentId", SqlDbType.Int).Value = studentId.Value;
+        command.Parameters.Add("@CourseOfferingId", SqlDbType.Int).Value = courseOfferingId.Value;
+
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 }
-=== ./src/Modules/Student/Application/Contracts/IStudentEnrollmentEligibilityChecker.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
 
-namespace LearningManagementSystem.Modules.Student.Application.Contracts;
 
-public interface IStudentEnrollmentEligibilityChecker
+
+==========================================
+FILE: src/Modules/Enrollment/Infrastructure/LearningManagementSystem.Modules.Enrollment.Infrastructure.csproj
+==========================================
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Application\LearningManagementSystem.Modules.Enrollment.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+
+
+==========================================
+FILE: src/Modules/Enrollment/Infrastructure/SqlEnrollmentRepository.cs
+==========================================
+using System.Data;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
+using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using Microsoft.Data.SqlClient;
+using EnrollmentAggregate = LearningManagementSystem.Modules.Enrollment.Domain.Aggregates.Enrollment;
+
+namespace LearningManagementSystem.Modules.Enrollment.Infrastructure;
+
+internal sealed class SqlEnrollmentRepository(string connectionString) : IEnrollmentRepository
 {
-    Task<StudentEnrollmentEligibilityResult> IsEligibleAsync(
-        StudentId studentId,
-        CourseOfferingId courseOfferingId,
-        CancellationToken cancellationToken);
-}
-=== ./src/Modules/Student/Application/Contracts/StudentEnrollmentEligibilityResult.cs ===
-namespace LearningManagementSystem.Modules.Student.Application.Contracts;
-
-public enum StudentEnrollmentEligibilityResult
-{
-    Eligible,
-    PrerequisitesNotMet
-}
-=== ./src/Modules/Student/Application/Services/StudentEnrollmentEligibilityChecker.cs ===
-using LearningManagementSystem.SharedKernel.ValueObjects;
-
-
-namespace LearningManagementSystem.Modules.Student.Application.Services;
-internal sealed class StudentEnrollmentEligibilityChecker : IStudentEnrollmentEligibilityChecker
-{
-    private readonly IStudentRepository _studentRepository;
-    private readonly ICourseOfferingRepository _courseOfferingRepository;
-    public StudentEnrollmentEligibilityChecker(
-        IStudentRepository studentRepository,
-        ICourseOfferingRepository courseOfferingRepository)
-    {
-        _studentRepository = studentRepository;
-        _courseOfferingRepository = courseOfferingRepository;
-    }
-    public async Task<StudentEnrollmentEligibilityResult> IsEligibleAsync(
-        StudentId studentId,
-        CourseOfferingId courseOfferingId,
+    public async Task<EnrollmentId> AddAsync(
+        EnrollmentAggregate enrollment,
         CancellationToken cancellationToken)
     {
-        var student = await _studentRepository.GetByIdAsync(studentId, cancellationToken);
-        if (student is null)
-            throw new InvalidOperationException($"Student with ID {studentId} not found.");
-        var courseOffering = await _courseOfferingRepository.GetByIdAsync(courseOfferingId, cancellationToken);
-        if (courseOffering is null)
-            throw new InvalidOperationException($"Course offering with ID {courseOfferingId} not found.");
-        // Check if the student meets the prerequisites for the course offering
-        if (!student.HasCompletedPrerequisites(courseOffering.Prerequisites))
-            return StudentEnrollmentEligibilityResult.PrerequisitesNotMet;
-        return StudentEnrollmentEligibilityResult.Eligible;
-    }
-}
-=== ./src/Modules/Student/Domain/Aggregates/Student.cs ===
-using System.Runtime.InteropServices;
+        const string sql = """
+            INSERT INTO dbo.Enrollment
+                (StudentId, CourseOfferingId, StatusId, EnrollmentDate,
+                 Price, DiscountTypeId, DiscountValue, DiscountCode)
+            OUTPUT INSERTED.EnrollmentId
+            VALUES
+                (@StudentId, @CourseOfferingId, @StatusId, @EnrollmentDate,
+                 @Price, NULL, @DiscountValue, @DiscountCode);
+            """;
 
-using LearningManagementSystem.SharedKernel.ValueObjects;
-using LearningManagementSystem.Student.Domain.ValueObjects;
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add("@StudentId", SqlDbType.Int).Value = enrollment.StudentId.Value;
+        command.Parameters.Add("@CourseOfferingId", SqlDbType.Int).Value = enrollment.CourseOfferingId.Value;
+        command.Parameters.Add("@StatusId", SqlDbType.TinyInt).Value = (byte)enrollment.Status;
+        command.Parameters.Add("@EnrollmentDate", SqlDbType.DateTime2).Value = enrollment.EnrollmentDate;
+        command.Parameters.Add("@Price", SqlDbType.Decimal).Value = enrollment.Price.Amount;
+        command.Parameters.Add("@DiscountValue", SqlDbType.Decimal).Value = enrollment.Discount.Amount;
+        command.Parameters.Add("@DiscountCode", SqlDbType.VarChar, 50).Value =
+            (object?)enrollment.DiscountCode ?? DBNull.Value;
 
-namespace LearningManagementSystem.Modules.Student.Domain.Aggregates;
+        var generatedId = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
+        var enrollmentId = new EnrollmentId(generatedId);
+        enrollment.AssignId(enrollmentId);
 
-public sealed class Student (
-    StudentId id,
-    Name firstName,
-    Name lastName,
-    Email email,
-    Department department,
-    Batch batch,
-    List<EnrolledCourses> enrolledCourses,
-    List<CompletedCourses> completedCourses,
-    ) : AggregateRoot
-{
-    public StudentId Id { get; } = id;
-    public FullName FirstName { get; } = firstName;
-    public FullName LastName { get; } = lastName;
-    public Email Email { get; } = email;
-    public Department Department { get; } = department;
-    public List<CourseId> EnrolledCourses { get; } = enrolledCourses;
-
-    private readonly List<CourseId> _enrolledCourses = new();
-    public IReadOnlyCollection<CourseId> EnrolledCourses => _enrolledCourses.AsReadOnly();
-    
-    private readonly List<CourseId> _completedCourses = new();
-    public IReadOnlyCollection<CourseId> CompletedCourses => _completedCourses.AsReadOnly();
-
-    public static Student Create(
-        StudentId id, 
-        Name firstName, 
-        Name lastName, 
-        Email email,
-        Department department,
-        Batch batch) 
-        => new(id, firstName, lastName, email, department, batch);
-
-
-    public void MarkCourseAsCompleted(CourseId courseId)
-    {
-        if (!_completedCourses.Contains(courseId))
-        {
-            _completedCourses.Add(courseId);
-        }
-    }
-
-
-
-
-    //public StudentEnrollmentEligibilityResult CheckEnrollmentEligibility(CourseOffering courseOffering)
-    //{
-    //    foreach (var prerequisite in courseOffering.Prerequisites)
-    //    {
-    //        if (!CompletedCourses.Any(c => c.CourseId == prerequisite))
-    //        {
-    //            return StudentEnrollmentEligibilityResult.PrerequisitesNotMet;
-    //        }
-    //    }
-    //    return StudentEnrollmentEligibilityResult.Eligible;
-    //}
-}
-=== ./src/Modules/Student/Domain/ValueObjects/FullName.cs ===
-using System;
-
-namespace LearningManagementSystem.Modules.Student.Domain.ValueObjects;
-
-public sealed record FullName (string firstName, string lastName)
-{
-    public string FirstName { get; } = firstName;
-    public string LastName { get; } = lastName;
-
-     
-    public static FullName Create(string firstName, string lastName)
-    {
-        if (string.IsNullOrWhiteSpace(firstName) || firstName.Length > 50)
-            throw new ArgumentException("First name is invalid.");
-
-        if (string.IsNullOrWhiteSpace(lastName) || lastName.Length > 50)
-            throw new ArgumentException("Last name is invalid.");
-
-        return new FullName(firstName, lastName);
-    }
-
-    public override string ToString() => $"{FirstName} {LastName}";
-}
-
-=== ./src/ServiceDefaults/Extensions.cs ===
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.ServiceDiscovery;
-using OpenTelemetry;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
-
-namespace Microsoft.Extensions.Hosting;
-
-// Adds common .NET Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
-// This project should be referenced by each service project in your solution.
-// To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
-public static class Extensions
-{
-    public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
-    {
-        builder.ConfigureOpenTelemetry();
-
-        builder.AddDefaultHealthChecks();
-
-        builder.Services.AddServiceDiscovery();
-
-        builder.Services.ConfigureHttpClientDefaults(http =>
-        {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
-
-            // Turn on service discovery by default
-            http.AddServiceDiscovery();
-        });
-
-        // Uncomment the following to restrict the allowed schemes for service discovery.
-        // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-        // {
-        //     options.AllowedSchemes = ["https"];
-        // });
-
-        return builder;
-    }
-
-    public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
-    {
-        builder.Logging.AddOpenTelemetry(logging =>
-        {
-            logging.IncludeFormattedMessage = true;
-            logging.IncludeScopes = true;
-        });
-
-        builder.Services.AddOpenTelemetry()
-            .WithMetrics(metrics =>
-            {
-                metrics.AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
-            })
-            .WithTracing(tracing =>
-            {
-                tracing.AddAspNetCoreInstrumentation()
-                    // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
-                    //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
-            });
-
-        builder.AddOpenTelemetryExporters();
-
-        return builder;
-    }
-
-    private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
-    {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
-
-        if (useOtlpExporter)
-        {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
-        }
-
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
-
-        return builder;
-    }
-
-    public static IHostApplicationBuilder AddDefaultHealthChecks(this IHostApplicationBuilder builder)
-    {
-        builder.Services.AddHealthChecks()
-            // Add a default liveness check to ensure app is responsive
-            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
-
-        return builder;
-    }
-
-    public static WebApplication MapDefaultEndpoints(this WebApplication app)
-    {
-        // Adding health checks endpoints to applications in non-development environments has security implications.
-        // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
-        if (app.Environment.IsDevelopment())
-        {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks("/health");
-
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks("/alive", new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
-        }
-
-        return app;
-    }
-}
-
-=== ./src/SharedKernel/Abstractions/AggregateRoot.cs ===
-using System;
-using System.Collections.Generic;
-
-namespace LearningManagementSystem.SharedKernel.Abstractions;
-
-public abstract class AggregateRoot
-{
-    private readonly List<DomainEvent> _domainEvents = new();
-
-    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
-    
-    protected void RaiseDomainEvent(DomainEvent domainEvent)
-    {
-        _domainEvents.Add(domainEvent);
-    }
-
-    public void ClearDomainEvents()
-    {
-        _domainEvents.Clear();
+        return enrollmentId;
     }
 }
 
 
-
- 
-
-        
-
-
-
-=== ./src/SharedKernel/Abstractions/DomainEvent.cs ===
-namespace LearningManagementSystem.SharedKernel.Abstractions;
-
-public abstract record DomainEvent(int EventId, DateTime OccurredOnUtc) : IDomainEvent
-{
-    protected DomainEvent() : this(int.Newint(), DateTime.UtcNow) 
-    { 
-    }
-}
-
-
-=== ./src/SharedKernel/Abstractions/IDomainEvent.cs ===
-using MediatR;
-namespace LearningManagementSystem.SharedKernel.Abstractions;
-
-public interface IDomainEvent : INotification 
-{
-    int EventId { get; }
-    DateTime OccurredOnUtc { get; }
-}
-
-=== ./src/SharedKernel/Results/Error.cs ===
-namespace LearningManagementSystem.SharedKernel.Results;
-
-public sealed record Error(string Code, string Message)
-{
-    public static readonly Error None = new(string.Empty, string.Empty);
-}
-
-=== ./src/SharedKernel/Results/OperationResult.cs ===
-namespace LearningManagementSystem.SharedKernel.Results;
-
-public sealed record OperationResult<T>(
-    OperationStatus Status,
-    T? Output = default,
-    Error? Error = null
-)
-{
-    public static OperationResult<T> Success(T output) =>
-        new(OperationStatus.Success, output, null);
-
-    public static OperationResult<T> Failure(Error error) =>
-        new(OperationStatus.Failure, default, error);
-
-    public static OperationResult<T> ValidationError(Error error) =>
-        new(OperationStatus.ValidationError, default, error);
-
-    public static OperationResult<T> NotFound(Error error) =>
-        new(OperationStatus.NotFound, default, error);
-
-    public static OperationResult<T> NeedsConfirmation(Error error) =>
-        new(OperationStatus.NeedsConfirmation, default, error);
-    
-    public static OperationResult<T> BusinessRuleError(Error error) =>
-        new(OperationStatus.BusinessRuleError, default, error);
-}
-
-public sealed record OperationResult(
-    OperationStatus Status,
-    Error? Error = null
-)
-{
-    public static OperationResult Success() =>
-        new(OperationStatus.Success, null);
-
-    public static OperationResult Failure(Error error) =>
-        new(OperationStatus.Failure, error);
-
-    public static OperationResult ValidationError(Error error) =>
-        new(OperationStatus.ValidationError, error);
-
-    public static OperationResult NotFound(Error error) =>
-        new(OperationStatus.NotFound, error);
-
-    public static OperationResult NeedsConfirmation(Error error) =>
-        new(OperationStatus.NeedsConfirmation, error);
-
-    public static OperationResult BusinessRuleError(Error error) =>
-        new(OperationStatus.BusinessRuleError, error);
-}
-=== ./src/SharedKernel/Results/OperationStatus.cs ===
-namespace LearningManagementSystem.SharedKernel.Results;
-
-public enum OperationStatus
-{
-    Success,
-    Failure,
-    NotFound,
-    ValidationError,
-    NeedsConfirmation,
-    BusinessRuleError
-}
-=== ./src/SharedKernel/ValidationBehavior.cs ===
-using FluentValidation;
-using MediatR;
-
-namespace LearningManagementSystem.SharedKernel.Behaviors;
-
-public sealed class ValidationBehavior<TRequest, TResponse> 
-    : IPipelineBehavior<TRequest, TResponse> where TRequest : notnull
-{
-    private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-    {
-        _validators = validators;
-    }
-
-    public async Task<TResponse> Handle(
-        TRequest request, 
-        RequestHandlerDelegate<TResponse> next, 
-        CancellationToken cancellationToken)
-    {
-        if (!_validators.Any())
-        {
-            return await next();
-        }
-
-        var context = new ValidationContext<TRequest>(request);
-
-        var validationResults = await Task.WhenAll(
-            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
-
-        var failures = validationResults
-            .Where(r => r.Errors.Any())
-            .SelectMany(r => r.Errors)
-            .ToList();
-
-        if (failures.Any())
-        {
-            throw new ValidationException(failures);
-        }
-
-        return await next();
-    }
-}
-
-=== ./src/SharedKernel/ValueObjects/CourseOfferingId.cs ===
-namespace LearningManagementSystem.SharedKernel.ValueObjects;
-
-public readonly record struct CourseOfferingId(int Value)
-{
-    public static CourseOfferingId New() => new(int.Newint());
-    public static CourseOfferingId Empty => new(int.Empty);
-}
-
-=== ./src/SharedKernel/ValueObjects/Money.cs ===
-namespace LearningManagementSystem.SharedKernel.ValueObjects;
-
-public sealed record Money
-{
-    public decimal Amount { get; init; }
-    public string Currency { get; init; }
-
-    public Money(decimal amount, string currency = "EGP")
-    {
-        if (amount < 0)
-            throw new ArgumentException("Amount cannot be negative", nameof(amount));
-
-        if (string.IsNullOrWhiteSpace(currency))
-            throw new ArgumentException("Currency cannot be empty", nameof(currency));
-
-        Amount = amount;
-        Currency = currency.ToUpper();
-    }
-
-    public static Money Zero(string currency = "EGP") => new(0, currency);
-
-    public static Money operator -(Money left, Money right)
-    {
-        if (left.Currency != right.Currency)
-            throw new InvalidOperationException("Cannot subtract money with different currencies.");
-
-        if (left.Amount < right.Amount)
-            throw new InvalidOperationException("Cannot have a negative money amount after subtraction.");
-
-        return new Money(left.Amount - right.Amount, left.Currency);
-    }
-
-    public static Money operator +(Money left, Money right)
-    {
-        if (left.Currency != right.Currency)
-            throw new InvalidOperationException("Cannot add money with different currencies.");
-
-        return new Money(left.Amount + right.Amount, left.Currency);
-    }
-
-    public Money ApplyPercentage(decimal percentage)
-    {
-        if (percentage < 0 || percentage > 100)
-            throw new ArgumentException("Percentage must be between 0 and 100.");
-
-        return new Money(this.Amount * (percentage / 100), this.Currency);
-    }
-}
-=== ./src/SharedKernel/ValueObjects/StudentId.cs ===
-namespace LearningManagementSystem.SharedKernel.ValueObjects;
-
-public readonly record struct StudentId(int Value)
-{
-    public static StudentId New() => new(int.Newint());
-    public static StudentId Empty => new(int.Empty);
-}
-
-=== ./tests/Architecture.Tests/UnitTest1.cs ===
-﻿namespace LearningManagementSystem.Architecture.Tests;
-
-public class UnitTest1
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}
 
