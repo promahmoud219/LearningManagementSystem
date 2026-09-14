@@ -1,8 +1,9 @@
 namespace LearningManagementSystem.Modules.Student.Contracts;
 
-public enum StudentEnrollmentEligibilityResult
+public enum StudentEnrollmentEligibilityResult : byte
 {
-    Eligible,
-    InvalidStudentId,
-    StudentNotFound
+    Eligible = 0,
+    InvalidStudentId = 1,
+    StudentNotFound = 2,
+    StudentNotActive = 3,
 }

@@ -1,14 +1,19 @@
-using LearningManagementSystem.Modules.Enrollment.Application;
+using LearningManagementSystem.Modules.CourseOffering.Application;
+using LearningManagementSystem.Modules.CourseOffering.Infrastructure;
 
+using LearningManagementSystem.Modules.Enrollment.Application;
+using LearningManagementSystem.Modules.Enrollment.Infrastructure;
+
+using LearningManagementSystem.Modules.Student.Application;
+using LearningManagementSystem.Modules.Student.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddEnrollmentApplication();
-
 
 builder.AddServiceDefaults();
 
 builder.Services.AddControllers();
+
+builder.Services.AddSwaggerGen();
 
 builder.Services
     .AddEnrollmentApplication()
@@ -22,13 +27,12 @@ builder.Services
     .AddCourseOfferingApplication()
     .AddCourseOfferingInfrastructure(builder.Configuration);
 
-builder.Services
-    .AddPaymentApplication()
-    .AddPaymentInfrastructure(builder.Configuration);
-
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 

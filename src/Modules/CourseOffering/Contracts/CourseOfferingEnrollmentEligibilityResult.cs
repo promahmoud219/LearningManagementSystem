@@ -4,6 +4,5 @@ public enum CourseOfferingEligibilityResult
 {
     Eligible,
     NotFound,
-    Closed,
     Full
 }

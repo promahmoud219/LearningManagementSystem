@@ -1,7 +1,9 @@
-using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
+
 using LearningManagementSystem.Modules.CourseOffering.Contracts;
+
 using LearningManagementSystem.Modules.Student.Contracts;
+
 using LearningManagementSystem.SharedKernel.ValueObjects; 
 
 
@@ -30,20 +32,25 @@ internal sealed class EnrollmentEligibilityService (
         var studentResult = await _studentEligibility.IsEligibleAsync(
             studentId, cancellationToken);
 
-        if (studentResult != StudentEnrollmentEligibilityResult.Eligible)
-            return EligibilityResult.InvalidStudent;
+        if (studentResult == StudentEnrollmentEligibilityResult.InvalidStudentId)
+            return EligibilityResult.InvalidStudentId;
+        
+        if (studentResult == StudentEnrollmentEligibilityResult.StudentNotFound)
+            return EligibilityResult.StudentNotFound;
+
+        if (studentResult == StudentEnrollmentEligibilityResult.StudentNotActive)
+            return EligibilityResult.StudentNotActive;
+
 
         var courseResult = await _courseOfferingEligibility.IsEligibleAsync(
             courseOfferingId, cancellationToken);
 
         if (courseResult == CourseOfferingEligibilityResult.NotFound)
-            return EligibilityResult.InvalidCourseOffering;
-
-        if (courseResult == CourseOfferingEligibilityResult.Closed)
-            return EligibilityResult.OutsideEnrollmentWindow;
+            return EligibilityResult.CourseOfferingNotFound; 
 
         if (courseResult == CourseOfferingEligibilityResult.Full)
             return EligibilityResult.CapacityExceeded;
+
 
         var studentInfo = await _studentInfoProvider.GetAsync(
             studentId, cancellationToken);
@@ -52,9 +59,7 @@ internal sealed class EnrollmentEligibilityService (
             courseOfferingId, cancellationToken);
 
         if (studentInfo is null || courseOfferingInfo is null)
-            return studentInfo is null
-                ? EligibilityResult.InvalidStudent
-                : EligibilityResult.InvalidCourseOffering;
+            return studentInfo is null ? EligibilityResult.StudentNotFound : EligibilityResult.CourseOfferingNotFound;
 
         if (studentInfo.Department != courseOfferingInfo.Department)
             return EligibilityResult.DepartmentMismatch; 

@@ -1,5 +1,6 @@
 using System.Data;
 using LearningManagementSystem.Modules.Student.Domain.Aggregates;
+using LearningManagementSystem.Modules.Student.Domain.Enums;
 using LearningManagementSystem.Modules.Student.Application.Repositories;
 using LearningManagementSystem.Modules.Student.Domain.ValueObjects;
 using LearningManagementSystem.SharedKernel.ValueObjects;
@@ -15,7 +16,7 @@ internal sealed class SqlStudentRepository(string connectionString) : IStudentRe
         CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT StudentId, FirstName, LastName, Email, DepartmentId
+            SELECT StudentId, FirstName, LastName, Email, DepartmentId, StatusId
             FROM dbo.Student
             WHERE StudentId = @Id;
             """;
@@ -34,6 +35,7 @@ internal sealed class SqlStudentRepository(string connectionString) : IStudentRe
             new StudentId(reader.GetInt32(0)),
             Name.Create(reader.GetString(1), reader.GetString(2)),
             Email.Create(reader.GetString(3)),
-            (Department)reader.GetByte(4));
+            (Department)reader.GetByte(4),
+            (StudentStatus)reader.GetByte(5));
     }
 }

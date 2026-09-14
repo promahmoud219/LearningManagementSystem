@@ -1,18 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MediatR" Version="14.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="MediatR" Version="14.2.0" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Modules\Enrollment\Application\LearningManagementSystem.Modules.Enrollment.Application.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+
+		<ProjectReference Include="..\ServiceDefaults\LearningManagementSystem.ServiceDefaults.csproj" />
+		
+		<ProjectReference Include="..\Modules\Enrollment\Application\LearningManagementSystem.Modules.Enrollment.Application.csproj" />
+		<ProjectReference Include="..\Modules\Enrollment\Infrastructure\LearningManagementSystem.Modules.Enrollment.Infrastructure.csproj" />
+
+		<ProjectReference Include="..\Modules\Student\Application\LearningManagementSystem.Modules.Student.Application.csproj" />
+		<ProjectReference Include="..\Modules\Student\Infrastructure\LearningManagementSystem.Modules.Student.Infrastructure.csproj" />
+
+		<ProjectReference Include="..\Modules\CourseOffering\Application\LearningManagementSystem.Modules.CourseOffering.Application.csproj" />
+		<ProjectReference Include="..\Modules\CourseOffering\Infrastructure\LearningManagementSystem.Modules.CourseOffering.Infrastructure.csproj" />
+
+	</ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
+
 /*
-    Run once against the LMS database.
+    Run once against the LMS_Database.
     SQL Server cannot add IDENTITY to an existing column, so this migration
     recreates dbo.Enrollment while preserving its current rows and IDs.
 */
@@ -49,7 +50,7 @@ BEGIN TRY
 
     CREATE UNIQUE NONCLUSTERED INDEX UX_Enrollment_Active_Student_CourseOffering
         ON dbo.Enrollment (StudentId, CourseOfferingId)
-        WHERE StatusId IN (1, 2);
+        WHERE StatusId IN (0, 1);
 
     COMMIT TRANSACTION;
 END TRY

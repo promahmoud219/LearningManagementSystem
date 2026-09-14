@@ -21,7 +21,7 @@ internal sealed class SqlCourseOfferingRepository(string connectionString) : ICo
             INNER JOIN dbo.Course AS c ON c.CourseId = co.CourseId
             LEFT JOIN dbo.Enrollment AS e
                 ON e.CourseOfferingId = co.CourseOfferingId
-                AND e.StatusId IN (1, 2)
+                AND e.StatusId IN (0, 1)
             WHERE co.CourseOfferingId = @Id
             GROUP BY co.CourseOfferingId, co.CourseId, co.TermId, co.StudyYear,
                      c.DepartmentId, co.Price, co.Capacity;
@@ -84,8 +84,11 @@ internal sealed class SqlCourseOfferingRepository(string connectionString) : ICo
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.Add("@Id", SqlDbType.Int).Value = courseOfferingId.Value;
         var result = await command.ExecuteScalarAsync(cancellationToken);
+        
         if (result is null || result == DBNull.Value)
-            return null!; // Return null if the course offering is not found
+            throw new InvalidOperationException(
+                $"Course offering {courseOfferingId.Value} was not found.");
+
         return new Money((decimal)result, "EGP");
     }
 }

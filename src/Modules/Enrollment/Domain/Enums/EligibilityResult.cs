@@ -6,8 +6,9 @@ public enum EligibilityResult : byte
     PrerequisitesNotMet = 1,
     DuplicateEnrollment = 2,
     CapacityExceeded = 3,
-    OutsideEnrollmentWindow = 4,
-    DepartmentMismatch = 5,
-    InvalidStudent = 6,
-    InvalidCourseOffering = 7
+    DepartmentMismatch = 4,
+    CourseOfferingNotFound = 5,
+    InvalidStudentId = 6,
+    StudentNotFound = 7,
+    StudentNotActive = 8
 }

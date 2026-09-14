@@ -1,5 +1,5 @@
 using System.Data;
-using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+using LearningManagementSystem.Modules.Enrollment.Application.Services;
 using LearningManagementSystem.SharedKernel.ValueObjects;
 using Microsoft.Data.SqlClient;
 
@@ -19,7 +19,7 @@ internal sealed class EnrollmentUniquenessChecker(string connectionString) : IEn
                 FROM dbo.Enrollment
                 WHERE StudentId = @StudentId
                   AND CourseOfferingId = @CourseOfferingId
-                  AND StatusId IN (1, 2)
+                  AND StatusId IN (0, 1)
             ) THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END;
             """;
 

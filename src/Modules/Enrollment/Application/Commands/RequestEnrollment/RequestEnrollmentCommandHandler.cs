@@ -1,12 +1,11 @@
 using MediatR;
-
-using LearningManagementSystem.Modules.Enrollment.Application.Contracts;
+ 
 using LearningManagementSystem.Modules.Enrollment.Application.Services;
 
 using LearningManagementSystem.Modules.Enrollment.Domain.Aggregates;
 using LearningManagementSystem.Modules.Enrollment.Domain.Enums;
-using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
 using LearningManagementSystem.Modules.Enrollment.Domain.ValueObjects;
+using LearningManagementSystem.Modules.Enrollment.Application.Repositories;
 
 using LearningManagementSystem.Modules.CourseOffering.Contracts;
 

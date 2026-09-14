@@ -10,8 +10,8 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("LMS")
-            ?? throw new InvalidOperationException("Connection string 'LmsDatabase' is not configured.");
+        var connectionString = configuration.GetConnectionString("LMS_Database")
+            ?? throw new InvalidOperationException("Connection string 'LMS_Database' is not configured.");
 
         services.AddScoped<ICourseOfferingRepository>(
             _ => new SqlCourseOfferingRepository(connectionString));
