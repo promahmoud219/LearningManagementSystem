@@ -1,6 +1,7 @@
 using LearningManagementSystem.Modules.Student.Contracts;
 using LearningManagementSystem.Modules.Student.Application.Repositories;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+using LearningManagementSystem.Modules.Student.Domain.Enums;
 
 namespace LearningManagementSystem.Modules.Student.Application.Services;
 
@@ -14,8 +15,13 @@ internal sealed class StudentEnrollmentEligibilityChecker(IStudentRepository rep
         if (studentId.Value <= 0)
             return StudentEnrollmentEligibilityResult.InvalidStudentId;
 
-        return await repository.GetByIdAsync(studentId, cancellationToken) is null
-            ? StudentEnrollmentEligibilityResult.StudentNotFound
-            : StudentEnrollmentEligibilityResult.Eligible;
+        var student = await repository.GetByIdAsync(studentId, cancellationToken);
+
+        if (student is null)
+            return StudentEnrollmentEligibilityResult.StudentNotFound;
+
+        return student.Status == StudentStatus.Active
+            ? StudentEnrollmentEligibilityResult.Eligible
+            : StudentEnrollmentEligibilityResult.StudentNotActive;
     }
 }
