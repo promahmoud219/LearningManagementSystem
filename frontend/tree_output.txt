@@ -1,0 +1,299 @@
+.
+├── LearningManagementSystem.Web
+│   ├── index.html
+│   ├── node_modules
+│   │   ├── @oxc-project
+│   │   │   └── types
+│   │   │       ├── LICENSE
+│   │   │       ├── README.md
+│   │   │       ├── package.json
+│   │   │       └── types.d.ts
+│   │   ├── @rolldown
+│   │   │   ├── binding-linux-x64-gnu
+│   │   │   │   ├── README.md
+│   │   │   │   ├── package.json
+│   │   │   │   └── rolldown-binding.linux-x64-gnu.node
+│   │   │   └── pluginutils
+│   │   │       ├── LICENSE
+│   │   │       ├── README.md
+│   │   │       ├── dist
+│   │   │       │   ├── filter
+│   │   │       │   │   ├── index.d.mts
+│   │   │       │   │   └── index.mjs
+│   │   │       │   ├── filter-B_mD-HGz.mjs
+│   │   │       │   ├── index.d.mts
+│   │   │       │   └── index.mjs
+│   │   │       └── package.json
+│   │   ├── fdir
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── dist
+│   │   │   │   ├── index.cjs
+│   │   │   │   ├── index.d.cts
+│   │   │   │   ├── index.d.mts
+│   │   │   │   └── index.mjs
+│   │   │   └── package.json
+│   │   ├── lightningcss
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── node
+│   │   │   │   ├── ast.d.ts
+│   │   │   │   ├── ast.js.flow
+│   │   │   │   ├── browserslistToTargets.js
+│   │   │   │   ├── composeVisitors.js
+│   │   │   │   ├── flags.js
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.js
+│   │   │   │   ├── index.js.flow
+│   │   │   │   ├── index.mjs
+│   │   │   │   ├── targets.d.ts
+│   │   │   │   └── targets.js.flow
+│   │   │   └── package.json
+│   │   ├── nanoid
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── async
+│   │   │   │   ├── index.browser.cjs
+│   │   │   │   ├── index.browser.js
+│   │   │   │   ├── index.cjs
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.js
+│   │   │   │   ├── index.native.js
+│   │   │   │   └── package.json
+│   │   │   ├── index.browser.cjs
+│   │   │   ├── index.browser.js
+│   │   │   ├── index.cjs
+│   │   │   ├── index.d.cts
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.js
+│   │   │   ├── nanoid.js
+│   │   │   ├── non-secure
+│   │   │   │   ├── index.cjs
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.js
+│   │   │   │   └── package.json
+│   │   │   ├── package.json
+│   │   │   └── url-alphabet
+│   │   │       ├── index.cjs
+│   │   │       ├── index.js
+│   │   │       └── package.json
+│   │   ├── picocolors
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── package.json
+│   │   │   ├── picocolors.browser.js
+│   │   │   ├── picocolors.d.ts
+│   │   │   ├── picocolors.js
+│   │   │   └── types.d.ts
+│   │   ├── picomatch
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── index.js
+│   │   │   ├── lib
+│   │   │   │   ├── constants.js
+│   │   │   │   ├── parse.js
+│   │   │   │   ├── picomatch.js
+│   │   │   │   ├── scan.js
+│   │   │   │   └── utils.js
+│   │   │   ├── package.json
+│   │   │   └── posix.js
+│   │   ├── postcss
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── lib
+│   │   │   │   ├── at-rule.d.ts
+│   │   │   │   ├── at-rule.js
+│   │   │   │   ├── comment.d.ts
+│   │   │   │   ├── comment.js
+│   │   │   │   ├── container.d.ts
+│   │   │   │   ├── container.js
+│   │   │   │   ├── css-syntax-error.d.ts
+│   │   │   │   ├── css-syntax-error.js
+│   │   │   │   ├── declaration.d.ts
+│   │   │   │   ├── declaration.js
+│   │   │   │   ├── document.d.ts
+│   │   │   │   ├── document.js
+│   │   │   │   ├── fromJSON.d.ts
+│   │   │   │   ├── fromJSON.js
+│   │   │   │   ├── input.d.ts
+│   │   │   │   ├── input.js
+│   │   │   │   ├── lazy-result.d.ts
+│   │   │   │   ├── lazy-result.js
+│   │   │   │   ├── list.d.ts
+│   │   │   │   ├── list.js
+│   │   │   │   ├── map-generator.js
+│   │   │   │   ├── no-work-result.d.ts
+│   │   │   │   ├── no-work-result.js
+│   │   │   │   ├── node.d.ts
+│   │   │   │   ├── node.js
+│   │   │   │   ├── parse.d.ts
+│   │   │   │   ├── parse.js
+│   │   │   │   ├── parser.js
+│   │   │   │   ├── postcss.d.mts
+│   │   │   │   ├── postcss.d.ts
+│   │   │   │   ├── postcss.js
+│   │   │   │   ├── postcss.mjs
+│   │   │   │   ├── previous-map.d.ts
+│   │   │   │   ├── previous-map.js
+│   │   │   │   ├── processor.d.ts
+│   │   │   │   ├── processor.js
+│   │   │   │   ├── result.d.ts
+│   │   │   │   ├── result.js
+│   │   │   │   ├── root.d.ts
+│   │   │   │   ├── root.js
+│   │   │   │   ├── rule.d.ts
+│   │   │   │   ├── rule.js
+│   │   │   │   ├── stringifier.d.ts
+│   │   │   │   ├── stringifier.js
+│   │   │   │   ├── stringify.d.ts
+│   │   │   │   ├── stringify.js
+│   │   │   │   ├── symbols.js
+│   │   │   │   ├── terminal-highlight.js
+│   │   │   │   ├── tokenize.js
+│   │   │   │   ├── warn-once.js
+│   │   │   │   ├── warning.d.ts
+│   │   │   │   └── warning.js
+│   │   │   └── package.json
+│   │   ├── rolldown
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── THIRD-PARTY-LICENSE
+│   │   │   ├── dist
+│   │   │   │   ├── cli.d.mts
+│   │   │   │   ├── cli.mjs
+│   │   │   │   ├── config.d.mts
+│   │   │   │   ├── config.mjs
+│   │   │   │   ├── experimental-default-runtime.mjs
+│   │   │   │   ├── experimental-index.d.mts
+│   │   │   │   ├── experimental-index.mjs
+│   │   │   │   ├── experimental-runtime-base.mjs
+│   │   │   │   ├── experimental-runtime-types.d.ts
+│   │   │   │   ├── experimental-runtime.d.ts
+│   │   │   │   ├── experimental-runtime.mjs
+│   │   │   │   ├── filter-index.d.mts
+│   │   │   │   ├── filter-index.mjs
+│   │   │   │   ├── get-log-filter.d.mts
+│   │   │   │   ├── get-log-filter.mjs
+│   │   │   │   ├── index.d.mts
+│   │   │   │   ├── index.mjs
+│   │   │   │   ├── parallel-plugin-worker.d.mts
+│   │   │   │   ├── parallel-plugin-worker.mjs
+│   │   │   │   ├── parallel-plugin.d.mts
+│   │   │   │   ├── parallel-plugin.mjs
+│   │   │   │   ├── parse-ast-index.d.mts
+│   │   │   │   ├── parse-ast-index.mjs
+│   │   │   │   ├── plugins-index.d.mts
+│   │   │   │   ├── plugins-index.mjs
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── binding-BTa6BPQe.d.mts
+│   │   │   │   │   ├── binding-BbrDfv1x.mjs
+│   │   │   │   │   ├── bindingify-input-options-D4l624og.mjs
+│   │   │   │   │   ├── constructors-CmDKpWIU.d.mts
+│   │   │   │   │   ├── constructors-D9jwEbE4.mjs
+│   │   │   │   │   ├── create-bundler-option-DJpvtSqr.mjs
+│   │   │   │   │   ├── define-config-BFdLpVut.d.mts
+│   │   │   │   │   ├── define-config-Demdg3_4.mjs
+│   │   │   │   │   ├── dist-DKbukT1H.mjs
+│   │   │   │   │   ├── error-CGhV1ebk.mjs
+│   │   │   │   │   ├── get-log-filter-AjBknEEO.d.mts
+│   │   │   │   │   ├── load-config-qRezutA0.mjs
+│   │   │   │   │   ├── logging-xuHO4mAy.d.mts
+│   │   │   │   │   ├── logs-DmYCAKcW.mjs
+│   │   │   │   │   ├── misc-DOSKtd97.mjs
+│   │   │   │   │   ├── normalize-string-or-regex-zc1bUto6.mjs
+│   │   │   │   │   ├── parse-DltPb1DL.mjs
+│   │   │   │   │   ├── prompt-CH6TK0bC.mjs
+│   │   │   │   │   ├── resolve-tsconfig-Bf6oL9fm.mjs
+│   │   │   │   │   ├── rolldown-Ld3ZGGCt.mjs
+│   │   │   │   │   ├── transform-DK_nCt9j.d.mts
+│   │   │   │   │   └── watch-BDSxrMiV.mjs
+│   │   │   │   ├── utils-index.d.mts
+│   │   │   │   └── utils-index.mjs
+│   │   │   └── package.json
+│   │   ├── source-map-js
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── lib
+│   │   │   │   ├── array-set.js
+│   │   │   │   ├── base64-vlq.js
+│   │   │   │   ├── base64.js
+│   │   │   │   ├── binary-search.js
+│   │   │   │   ├── mapping-list.js
+│   │   │   │   ├── quick-sort.js
+│   │   │   │   ├── source-map-consumer.d.ts
+│   │   │   │   ├── source-map-consumer.js
+│   │   │   │   ├── source-map-generator.d.ts
+│   │   │   │   ├── source-map-generator.js
+│   │   │   │   ├── source-node.d.ts
+│   │   │   │   ├── source-node.js
+│   │   │   │   └── util.js
+│   │   │   ├── package.json
+│   │   │   ├── source-map.d.ts
+│   │   │   └── source-map.js
+│   │   ├── tinyglobby
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── dist
+│   │   │   │   ├── index.cjs
+│   │   │   │   ├── index.d.cts
+│   │   │   │   ├── index.d.mts
+│   │   │   │   └── index.mjs
+│   │   │   └── package.json
+│   │   └── vite
+│   │       ├── LICENSE.md
+│   │       ├── README.md
+│   │       ├── client.d.ts
+│   │       ├── dist
+│   │       │   ├── client
+│   │       │   │   ├── bundledDevClient.mjs
+│   │       │   │   ├── client.mjs
+│   │       │   │   └── env.mjs
+│   │       │   └── node
+│   │       │       ├── chunks
+│   │       │       │   ├── build.js
+│   │       │       │   ├── dist.js
+│   │       │       │   ├── lib.js
+│   │       │       │   ├── moduleRunnerTransport.d.ts
+│   │       │       │   ├── node.js
+│   │       │       │   └── postcss-import.js
+│   │       │       ├── cli.js
+│   │       │       ├── index.d.ts
+│   │       │       ├── index.js
+│   │       │       ├── internal.d.ts
+│   │       │       ├── internal.js
+│   │       │       ├── module-runner.d.ts
+│   │       │       └── module-runner.js
+│   │       ├── misc
+│   │       │   ├── false.js
+│   │       │   └── true.js
+│   │       ├── package.json
+│   │       └── types
+│   │           ├── customEvent.d.ts
+│   │           ├── hmrPayload.d.ts
+│   │           ├── hot.d.ts
+│   │           ├── import-meta.d.ts
+│   │           ├── importGlob.d.ts
+│   │           ├── importMeta.d.ts
+│   │           ├── internal
+│   │           │   ├── cssPreprocessorOptions.d.ts
+│   │           │   ├── devtoolsOptions.d.ts
+│   │           │   ├── esbuildOptions.d.ts
+│   │           │   ├── lightningcssOptions.d.ts
+│   │           │   ├── rollupTypeCompat.d.ts
+│   │           │   └── terserOptions.d.ts
+│   │           └── metadata.d.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   ├── ChatGPT Image Sep 17, 2026, 06_45_41 PM.png
+│   │   ├── LMS_bg_white.png
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   └── src
+│       ├── assets
+│       ├── counter.js
+│       ├── main.js
+│       └── style.css
+└── tree_output.txt
+
+40 directories, 256 files

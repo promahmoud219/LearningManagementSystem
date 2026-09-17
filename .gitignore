@@ -486,3 +486,7 @@ $RECYCLE.BIN/
 
 vim.cs
 show_code.cs
+
+
+node_modules/
+dist/

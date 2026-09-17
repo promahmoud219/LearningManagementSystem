@@ -1,8 +1,9 @@
-using System.Data;
-using LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
+using LearningManagementSystem.Modules.CourseOffering.Application.Queries.GetAllCourseOfferings;
 using LearningManagementSystem.Modules.CourseOffering.Application.Repositories;
+using LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
 using LearningManagementSystem.SharedKernel.ValueObjects;
 using Microsoft.Data.SqlClient;
+using System.Data;
 using CourseOfferingAggregate = LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates.CourseOffering;
 
 namespace LearningManagementSystem.Modules.CourseOffering.Infrastructure;
@@ -70,9 +71,7 @@ internal sealed class SqlCourseOfferingRepository(string connectionString) : ICo
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<Money> GetCurrentPriceAsync(
-        CourseOfferingId courseOfferingId,
-        CancellationToken cancellationToken)
+    public async Task<Money> GetCurrentPriceAsync(CourseOfferingId courseOfferingId, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT Price
@@ -90,5 +89,43 @@ internal sealed class SqlCourseOfferingRepository(string connectionString) : ICo
                 $"Course offering {courseOfferingId.Value} was not found.");
 
         return new Money((decimal)result, "EGP");
+    }
+
+    public async Task<IReadOnlyList<CourseOfferingListItem>> GetAllAsync(
+    CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT *
+        FROM dbo.vw_CourseOfferingDetails
+        ORDER BY CourseOfferingId;
+        """;
+
+        var courseOfferings = new List<CourseOfferingListItem>();
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = new SqlCommand(sql, connection);
+
+        await using var reader =
+            await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            courseOfferings.Add(
+                new CourseOfferingListItem(
+                    reader.GetInt32(0),        
+                    reader.GetInt16(1),        
+                    reader.GetString(2),       
+                    reader.GetByte(3),         
+                    reader.GetString(4),       
+                    reader.GetByte(5),         
+                    reader.GetInt16(6),        
+                    reader.GetDecimal(7),      
+                    reader.GetInt16(8),        
+                    reader.GetInt32(9)));      
+        }
+
+        return courseOfferings;
     }
 }

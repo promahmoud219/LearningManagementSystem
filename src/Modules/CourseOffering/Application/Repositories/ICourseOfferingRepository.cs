@@ -1,5 +1,7 @@
+using LearningManagementSystem.Modules.CourseOffering.Application.Queries.GetAllCourseOfferings;
 using LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates;
 using LearningManagementSystem.SharedKernel.ValueObjects;
+
 using CourseOfferingAggregate = LearningManagementSystem.Modules.CourseOffering.Domain.Aggregates.CourseOffering;
 
 namespace LearningManagementSystem.Modules.CourseOffering.Application.Repositories;
@@ -7,6 +9,7 @@ namespace LearningManagementSystem.Modules.CourseOffering.Application.Repositori
 public interface ICourseOfferingRepository
 {
     Task<CourseOfferingAggregate?> GetByIdAsync(CourseOfferingId id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<CourseOfferingListItem>> GetAllAsync(CancellationToken cancellationToken);
     Task AddAsync(CourseOfferingAggregate courseOffering, CancellationToken cancellationToken);
     Task<Money> GetCurrentPriceAsync(CourseOfferingId courseOfferingId, CancellationToken cancellationToken);
 }
